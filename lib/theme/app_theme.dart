@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color primary = Color(0xFF3525cd);
@@ -67,7 +68,7 @@ class AppTheme {
         outlineVariant: outlineVariant,
       ),
       scaffoldBackgroundColor: background,
-      fontFamily: 'Inter',
+      textTheme: GoogleFonts.interTextTheme(),
       appBarTheme: const AppBarTheme(
         backgroundColor: surface,
         foregroundColor: onSurface,
@@ -77,15 +78,13 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    // For now, mapping a simple dark scheme using standard colors
-    // to prevent the broken UI the user experienced.
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         brightness: Brightness.dark,
       ),
-      fontFamily: 'Inter',
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
     );
   }
 }
