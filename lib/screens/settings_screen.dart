@@ -14,65 +14,65 @@ class SettingsScreen extends ConsumerWidget {
     final authNotifier = ref.read(authProvider.notifier);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         children: [
           ListTile(
             leading: CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
               child: Text(user?.email?.substring(0, 1).toUpperCase() ?? 'U'),
             ),
-            title: Text(user?.displayName ?? 'Kaveem Uddin', style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(user?.displayName ?? 'Kaveem Uddin', style: TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(user?.email ?? 'kaveem@kaveem.com'),
           ),
-          const Divider(),
-          const Padding(
+          Divider(),
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: Text('Appearance', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           RadioListTile<ThemeMode>(
-            title: const Text('System Default'),
+            title: Text('System Default'),
             value: ThemeMode.system,
             groupValue: themeMode,
             onChanged: (val) => themeNotifier.setTheme(val!),
           ),
           RadioListTile<ThemeMode>(
-            title: const Text('Light Mode'),
+            title: Text('Light Mode'),
             value: ThemeMode.light,
             groupValue: themeMode,
             onChanged: (val) => themeNotifier.setTheme(val!),
           ),
           RadioListTile<ThemeMode>(
-            title: const Text('Dark Mode'),
+            title: Text('Dark Mode'),
             value: ThemeMode.dark,
             groupValue: themeMode,
             onChanged: (val) => themeNotifier.setTheme(val!),
           ),
-          const Divider(),
-          const Padding(
+          Divider(),
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           SwitchListTile(
-            title: const Text('Push Notifications'),
+            title: Text('Push Notifications'),
             value: true,
             onChanged: (val) {
             },
-            activeColor: Theme.of(context).colorScheme.primary,
+            activeThumbColor: Theme.of(context).colorScheme.primary,
           ),
-          const Divider(),
-          const Padding(
+          Divider(),
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: Text('Account', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Log Out', style: TextStyle(color: Colors.red)),
+            leading: Icon(Icons.logout, color: Colors.red),
+            title: Text('Log Out', style: TextStyle(color: Colors.red)),
             onTap: () async {
               await authNotifier.signOut();
             },

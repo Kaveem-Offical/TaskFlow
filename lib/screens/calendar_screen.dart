@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../providers/providers.dart';
 import '../models/task_model.dart';
 import '../models/event_model.dart';
-import '../theme/app_theme.dart';
 import 'tasks_screen.dart'; // Import to use showTaskModal
 
 class CalendarScreen extends ConsumerStatefulWidget {
@@ -62,9 +61,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final eventsAsync = ref.watch(eventsStreamProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Calendar', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Calendar', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: tasksAsync.when(
         data: (tasks) {
@@ -92,25 +91,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     eventLoader: (day) {
                       return _getEventsForDay(day, tasks, events);
                     },
-                    calendarStyle: const CalendarStyle(
+                    calendarStyle: CalendarStyle(
                       todayDecoration: BoxDecoration(
-                        color: AppTheme.surfaceContainerHighest,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         shape: BoxShape.circle,
                       ),
                       selectedDecoration: BoxDecoration(
-                        color: AppTheme.primary,
+                        color: Theme.of(context).colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
                       markerDecoration: BoxDecoration(
-                        color: AppTheme.primary,
+                        color: Theme.of(context).colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8.0),
+                  SizedBox(height: 8.0),
                   Expanded(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
+                      duration: Duration(milliseconds: 300),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
                       child: selectedDayItems.isEmpty
@@ -119,15 +118,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.event_busy, size: 48, color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
-                                  const SizedBox(height: 16),
-                                  const Text('No events or tasks for this day.', style: TextStyle(color: AppTheme.outline)),
+                                  Icon(Icons.event_busy, size: 48, color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                                  SizedBox(height: 16),
+                                  Text('No events or tasks for this day.', style: TextStyle(color: Theme.of(context).colorScheme.outline)),
                                 ],
                               ),
                             )
                           : ListView.builder(
                               key: ValueKey('list_${_selectedDay?.toIso8601String()}'),
-                              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 160.0),
+                              padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 160.0),
                               itemCount: selectedDayItems.length,
                               itemBuilder: (context, index) {
                                 final item = selectedDayItems[index];
@@ -136,7 +135,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 } else if (item is Event) {
                                   return _buildEventTile(item);
                                 }
-                                return const SizedBox();
+                                return SizedBox();
                               },
                             ),
                     ),
@@ -144,19 +143,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ],
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(child: CircularProgressIndicator()),
             error: (e, st) => Center(child: Text('Error loading events: $e')),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error loading tasks: $e')),
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80.0),
+        padding: EdgeInsets.only(bottom: 80.0),
         child: FloatingActionButton(
           onPressed: () => _showEventModal(context, ref, null),
-          backgroundColor: AppTheme.primary,
-          child: const Icon(Icons.add, color: AppTheme.onPrimary),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
         ),
       ),
     );
@@ -173,31 +172,31 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return GestureDetector(
       onTap: () => showTaskModal(context, ref, task),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8.0),
+        margin: EdgeInsets.only(bottom: 8.0),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(width: 6, color: task.isCompleted ? AppTheme.outline : AppTheme.tertiaryContainer), // Color-coded task border
+              Container(width: 6, color: task.isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.tertiaryContainer), // Color-coded task border
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.check_circle_outline, size: 20, color: task.isCompleted ? AppTheme.tertiaryContainer : AppTheme.outlineVariant),
-                          const SizedBox(width: 8),
+                          Icon(Icons.check_circle_outline, size: 20, color: task.isCompleted ? Theme.of(context).colorScheme.tertiaryContainer : Theme.of(context).colorScheme.outlineVariant),
+                          SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               task.title,
@@ -205,24 +204,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                                color: task.isCompleted ? AppTheme.outline : AppTheme.onSurface,
+                                color: task.isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: AppTheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(4)),
-                            child: const Text('TASK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceVariant)),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(4)),
+                            child: Text('TASK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
-                          const SizedBox(width: 28),
-                          Icon(Icons.schedule, size: 14, color: AppTheme.outline),
-                          const SizedBox(width: 4),
-                          Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.outline, fontWeight: FontWeight.w500)),
+                          SizedBox(width: 28),
+                          Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.outline),
+                          SizedBox(width: 4),
+                          Text(subtitle, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ],
@@ -240,48 +239,48 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return GestureDetector(
       onTap: () => _showEventModal(context, ref, event),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8.0),
+        margin: EdgeInsets.only(bottom: 8.0),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.5)),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(width: 6, color: AppTheme.primary), // Color-coded event border
+              Container(width: 6, color: Theme.of(context).colorScheme.primary), // Color-coded event border
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.event, size: 20, color: AppTheme.primary),
-                          const SizedBox(width: 8),
+                          Icon(Icons.event, size: 20, color: Theme.of(context).colorScheme.primary),
+                          SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               event.title,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.onSurface),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
-                          const SizedBox(width: 28),
-                          const Icon(Icons.schedule, size: 14, color: AppTheme.primary),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 28),
+                          Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.primary),
+                          SizedBox(width: 4),
                           Text(
                             '${DateFormat.jm().format(event.startTime)} - ${DateFormat.jm().format(event.endTime)}',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -304,8 +303,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -322,10 +321,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(existingEvent == null ? 'Create Event' : 'Edit Event', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.onSurface)),
+                        Text(existingEvent == null ? 'Create Event' : 'Edit Event', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                         if (existingEvent != null)
                           IconButton(
-                            icon: const Icon(Icons.delete_outline, color: AppTheme.error),
+                            icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
                             onPressed: () {
                               ref.read(eventRepositoryProvider).deleteEvent(existingEvent.id);
                               Navigator.pop(context);
@@ -333,30 +332,30 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     TextFormField(
                       initialValue: title,
-                      style: const TextStyle(color: AppTheme.onSurface, fontWeight: FontWeight.w500, fontSize: 16),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500, fontSize: 16),
                       decoration: InputDecoration(
                         labelText: 'Event Title',
-                        labelStyle: const TextStyle(color: AppTheme.outline),
+                        labelStyle: TextStyle(color: Theme.of(context).colorScheme.outline),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
                       ),
                       onChanged: (val) => title = val,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceContainerHigh,
+                        color: Theme.of(context).colorScheme.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
                           Expanded(
                             child: ListTile(
-                              title: Text('Start: ${startTime.format(context)}', style: const TextStyle(fontSize: 14, color: AppTheme.onSurface, fontWeight: FontWeight.w500)),
-                              trailing: const Icon(Icons.access_time, size: 20, color: AppTheme.outline),
+                              title: Text('Start: ${startTime.format(context)}', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500)),
+                              trailing: Icon(Icons.access_time, size: 20, color: Theme.of(context).colorScheme.outline),
                               onTap: () async {
                                 final picked = await showTimePicker(context: context, initialTime: startTime);
                                 if (picked != null) {
@@ -365,11 +364,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               },
                             ),
                           ),
-                          Container(height: 30, width: 1, color: AppTheme.outlineVariant),
+                          Container(height: 30, width: 1, color: Theme.of(context).colorScheme.outlineVariant),
                           Expanded(
                             child: ListTile(
-                              title: Text('End: ${endTime.format(context)}', style: const TextStyle(fontSize: 14, color: AppTheme.onSurface, fontWeight: FontWeight.w500)),
-                              trailing: const Icon(Icons.access_time, size: 20, color: AppTheme.outline),
+                              title: Text('End: ${endTime.format(context)}', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500)),
+                              trailing: Icon(Icons.access_time, size: 20, color: Theme.of(context).colorScheme.outline),
                               onTap: () async {
                                 final picked = await showTimePicker(context: context, initialTime: endTime);
                                 if (picked != null) {
@@ -381,11 +380,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: AppTheme.onPrimary,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         minimumSize: const Size.fromHeight(56),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
@@ -410,9 +409,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           Navigator.pop(context);
                         }
                       },
-                      child: Text(existingEvent == null ? 'Add Event' : 'Save Changes', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(existingEvent == null ? 'Add Event' : 'Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
                   ],
                 ),
               ),

@@ -5,8 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/providers.dart';
 import '../models/task_model.dart';
-import '../models/focus_session_model.dart';
-import '../theme/app_theme.dart';
 
 class InsightsScreen extends ConsumerStatefulWidget {
   const InsightsScreen({super.key});
@@ -24,10 +22,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     final sessionsAsync = ref.watch(focusSessionsStreamProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Insights', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: AppTheme.background,
+        title: Text('Insights', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
       ),
       body: tasksAsync.when(
@@ -38,7 +36,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               DateTime startDate;
               
               if (_dateRange == 'Last 7 Days') {
-                startDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+                startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6));
               } else if (_dateRange == 'This Month') {
                 startDate = DateTime(now.year, now.month, 1);
               } else {
@@ -47,11 +45,11 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
               final filteredTasks = tasks.where((t) {
                 if (!t.isCompleted || t.dueDate == null) return false;
-                return t.dueDate!.isAfter(startDate.subtract(const Duration(days: 1)));
+                return t.dueDate!.isAfter(startDate.subtract(Duration(days: 1)));
               }).toList();
 
               final filteredSessions = sessions.where((s) {
-                return s.timestamp.isAfter(startDate.subtract(const Duration(days: 1)));
+                return s.timestamp.isAfter(startDate.subtract(Duration(days: 1)));
               }).toList();
 
               final completedTasksCount = filteredTasks.length;
@@ -61,7 +59,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               final avgSession = totalSessions > 0 ? (focusMinutes / totalSessions).toStringAsFixed(0) : '0';
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 160.0), // Generous bottom padding
+                padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 160.0), // Generous bottom padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -72,12 +70,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                         children: ['Last 7 Days', 'This Month', 'This Year'].map((range) {
                           final isSelected = _dateRange == range;
                           return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
+                            padding: EdgeInsets.only(right: 8.0),
                             child: FilterChip(
                               label: Text(
                                 range,
                                 style: TextStyle(
-                                  color: isSelected ? AppTheme.onPrimary : AppTheme.onSurfaceVariant,
+                                  color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurfaceVariant,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                 ),
                               ),
@@ -85,13 +83,13 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                               onSelected: (val) {
                                 if (val) setState(() => _dateRange = range);
                               },
-                              backgroundColor: AppTheme.surface,
-                              selectedColor: AppTheme.primary,
+                              backgroundColor: Theme.of(context).colorScheme.surface,
+                              selectedColor: Theme.of(context).colorScheme.primary,
                               showCheckmark: false,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                                 side: BorderSide(
-                                  color: isSelected ? AppTheme.primary : AppTheme.outlineVariant,
+                                  color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outlineVariant,
                                 ),
                               ),
                             ),
@@ -99,7 +97,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                         }).toList(),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     
                     // Metrics Grid
                     GridView.count(
@@ -107,33 +105,33 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+                      physics: NeverScrollableScrollPhysics(),
                       childAspectRatio: 1.3,
                       children: [
-                        _buildMetricCard('Tasks Done', completedTasksCount.toString(), Icons.check_circle_outline, AppTheme.tertiary),
-                        _buildMetricCard('Focus Hours', focusHours, Icons.timer_outlined, AppTheme.primary),
-                        _buildMetricCard('Sessions', totalSessions.toString(), Icons.play_circle_outline, AppTheme.secondary),
-                        _buildMetricCard('Avg Session', '$avgSession m', Icons.analytics_outlined, AppTheme.error),
+                        _buildMetricCard('Tasks Done', completedTasksCount.toString(), Icons.check_circle_outline, Theme.of(context).colorScheme.tertiary),
+                        _buildMetricCard('Focus Hours', focusHours, Icons.timer_outlined, Theme.of(context).colorScheme.primary),
+                        _buildMetricCard('Sessions', totalSessions.toString(), Icons.play_circle_outline, Theme.of(context).colorScheme.secondary),
+                        _buildMetricCard('Avg Session', '$avgSession m', Icons.analytics_outlined, Theme.of(context).colorScheme.error),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
 
                     // Productivity Overview Chart
-                    const Text('Productivity Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text('Tasks completed over time', style: TextStyle(color: AppTheme.outline, fontSize: 14)),
-                    const SizedBox(height: 24),
+                    Text('Productivity Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 8),
+                    Text('Tasks completed over time', style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 14)),
+                    SizedBox(height: 24),
                     SizedBox(
                       height: 250,
                       child: Card(
                         elevation: 0,
-                        color: AppTheme.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(color: AppTheme.outlineVariant.withOpacity(0.5)),
+                          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+                          padding: EdgeInsets.fromLTRB(16, 32, 16, 16),
                           child: _buildBarChart(filteredTasks, startDate),
                         ),
                       ),
@@ -142,11 +140,11 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                 ),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(child: CircularProgressIndicator()),
             error: (e, st) => Center(child: Text('Error: $e')),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
       ),
     );
@@ -155,19 +153,19 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
   Widget _buildMetricCard(String title, String value, IconData icon, Color iconColor) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -180,13 +178,13 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                 style: GoogleFonts.jetBrainsMono(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.onSurface,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -226,13 +224,13 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         barRods: [
           BarChartRodData(
             toY: (counts[i] ?? 0).toDouble(),
-            color: AppTheme.primary,
+            color: Theme.of(context).colorScheme.primary,
             width: _dateRange == 'This Month' ? 6 : 14,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             backDrawRodData: BackgroundBarChartRodData(
               show: true,
               toY: _getMaxY(counts) * 1.2,
-              color: AppTheme.surfaceContainerHighest,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
           )
         ],
@@ -246,11 +244,11 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         barTouchData: BarTouchData(
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => AppTheme.onSurface,
+            getTooltipColor: (group) => Theme.of(context).colorScheme.onSurface,
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '${rod.toY.toInt()} tasks',
-                const TextStyle(color: AppTheme.surface, fontWeight: FontWeight.bold),
+                TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.bold),
               );
             },
           ),
@@ -266,11 +264,11 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               reservedSize: 30,
             ),
           ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        gridData: const FlGridData(show: false),
+        gridData: FlGridData(show: false),
         borderData: FlBorderData(show: false),
         barGroups: barGroups,
       ),
@@ -302,14 +300,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       }
     }
 
-    if (text.isEmpty) return const SizedBox();
+    if (text.isEmpty) return SizedBox();
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8.0),
+      padding: EdgeInsets.only(top: 8.0),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppTheme.outline,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.outline,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),

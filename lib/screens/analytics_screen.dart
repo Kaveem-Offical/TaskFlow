@@ -14,9 +14,9 @@ class AnalyticsScreen extends ConsumerWidget {
     final sessionsAsync = ref.watch(focusSessionsStreamProvider);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Widgets & Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Widgets & Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
       ),
       body: tasksAsync.when(
@@ -26,14 +26,14 @@ class AnalyticsScreen extends ConsumerWidget {
               final categoryDistribution = _getCategoryDistribution(tasks);
               
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Task Distribution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
+                    Text('Task Distribution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 16),
                     if (categoryDistribution.isEmpty)
-                      const Text('No completed tasks yet.')
+                      Text('No completed tasks yet.')
                     else
                       SizedBox(
                         height: 250,
@@ -41,7 +41,7 @@ class AnalyticsScreen extends ConsumerWidget {
                           elevation: 4,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           child: Padding(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: EdgeInsets.all(16.0),
                             child: PieChart(
                               PieChartData(
                                 sectionsSpace: 2,
@@ -52,19 +52,19 @@ class AnalyticsScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 32),
-                    const Text('Focus Streak', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 32),
+                    Text('Focus Streak', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 16),
                     _buildStreakWidget(sessions),
                   ],
                 ),
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(child: CircularProgressIndicator()),
             error: (e, st) => Center(child: Text('Error: $e')),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
       ),
     );
@@ -81,7 +81,7 @@ class AnalyticsScreen extends ConsumerWidget {
   }
 
   List<PieChartSectionData> _buildPieChartSections(Map<String, int> data) {
-    final colors = [const Color(0xFF3525CD), Colors.orange, Colors.teal, Colors.pink];
+    final colors = [Color(0xFF3525CD), Colors.orange, Colors.teal, Colors.pink];
     int i = 0;
     return data.entries.map((e) {
       final color = colors[i % colors.length];
@@ -91,7 +91,7 @@ class AnalyticsScreen extends ConsumerWidget {
         value: e.value.toDouble(),
         title: '${e.key}\n${e.value}',
         radius: 60,
-        titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
       );
     }).toList();
   }
@@ -104,15 +104,15 @@ class AnalyticsScreen extends ConsumerWidget {
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: EdgeInsets.all(24.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Current Streak', style: TextStyle(color: Colors.grey)),
-                Text('$streak Days', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Geist')),
+                Text('Current Streak', style: TextStyle(color: Colors.grey)),
+                Text('$streak Days', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Geist')),
               ],
             ),
             Icon(Icons.local_fire_department, color: Colors.orange.shade400, size: 48),

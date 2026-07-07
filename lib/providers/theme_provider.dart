@@ -12,8 +12,9 @@ class ThemeNotifier extends Notifier<ThemeMode> {
   void _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final themeString = prefs.getString('themeMode') ?? 'system';
-    if (themeString == 'light') state = ThemeMode.light;
-    else if (themeString == 'dark') state = ThemeMode.dark;
+    if (themeString == 'light') {
+      state = ThemeMode.light;
+    } else if (themeString == 'dark') state = ThemeMode.dark;
     else state = ThemeMode.system;
   }
 
@@ -21,8 +22,9 @@ class ThemeNotifier extends Notifier<ThemeMode> {
     state = mode;
     final prefs = await SharedPreferences.getInstance();
     String themeString = 'system';
-    if (mode == ThemeMode.light) themeString = 'light';
-    else if (mode == ThemeMode.dark) themeString = 'dark';
+    if (mode == ThemeMode.light) {
+      themeString = 'light';
+    } else if (mode == ThemeMode.dark) themeString = 'dark';
     prefs.setString('themeMode', themeString);
   }
 }

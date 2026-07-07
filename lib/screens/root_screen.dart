@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
-import '../theme/app_theme.dart';
 import '../providers/providers.dart';
 import 'tasks_screen.dart';
 import 'calendar_screen.dart';
@@ -19,12 +18,12 @@ class RootScreen extends ConsumerStatefulWidget {
 
 class _RootScreenState extends ConsumerState<RootScreen> {
   final List<Widget> _screens = [
-    const TasksScreen(),
-    const CalendarScreen(),
-    const FocusScreen(),
-    const InsightsScreen(),
-    const AnalyticsScreen(),
-    const SettingsScreen(),
+    TasksScreen(),
+    CalendarScreen(),
+    FocusScreen(),
+    InsightsScreen(),
+    AnalyticsScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -34,7 +33,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     return Scaffold(
       extendBody: true, // Needed for floating/glassmorphism navbar
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
+        duration: Duration(milliseconds: 250),
         child: IndexedStack(
           key: ValueKey<int>(currentIndex),
           index: currentIndex,
@@ -47,8 +46,8 @@ class _RootScreenState extends ConsumerState<RootScreen> {
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             decoration: BoxDecoration(
-              color: AppTheme.surface.withOpacity(0.8),
-              border: Border(top: BorderSide(color: AppTheme.outlineVariant.withOpacity(0.3))),
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
+              border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3))),
             ),
             child: BottomNavigationBar(
               currentIndex: currentIndex,
@@ -58,11 +57,11 @@ class _RootScreenState extends ConsumerState<RootScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               type: BottomNavigationBarType.fixed,
-              selectedItemColor: AppTheme.primary,
-              unselectedItemColor: AppTheme.onSurfaceVariant,
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-              unselectedLabelStyle: const TextStyle(fontSize: 10),
-              items: const [
+              selectedItemColor: Theme.of(context).colorScheme.primary,
+              unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
+              unselectedLabelStyle: TextStyle(fontSize: 10),
+              items: [
                 BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), activeIcon: Icon(Icons.check_circle), label: 'Tasks'),
                 BottomNavigationBarItem(icon: Icon(Icons.calendar_month_outlined), activeIcon: Icon(Icons.calendar_month), label: 'Calendar'),
                 BottomNavigationBarItem(icon: Icon(Icons.timer_outlined), activeIcon: Icon(Icons.timer), label: 'Focus'),
