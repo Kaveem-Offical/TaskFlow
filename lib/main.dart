@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/root_screen.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // TODO: Add real FirebaseOptions using flutterfire cli for production
-  // await Firebase.initializeApp();
+  
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'dummy_api_key',
+        appId: '1:1234567890:web:abcdef123456',
+        messagingSenderId: '1234567890',
+        projectId: 'dummy-project',
+      ),
+    );
+  } catch (e) {
+    // Ignore initialization errors
+  }
   
   runApp(
     const ProviderScope(
