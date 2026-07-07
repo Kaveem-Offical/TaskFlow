@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/insights_screen.dart';
+import 'screens/settings_screen.dart';
+import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,18 +15,25 @@ void main() async {
   );
 }
 
-class TaskFlowApp extends StatelessWidget {
+class TaskFlowApp extends ConsumerWidget {
   const TaskFlowApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
       title: 'TaskFlow Productivity Suite',
+      themeMode: themeMode,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD), brightness: Brightness.light),
         useMaterial3: true,
       ),
-      home: const InsightsScreen(),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD), brightness: Brightness.dark),
+        useMaterial3: true,
+      ),
+      home: const SettingsScreen(),
     );
   }
 }
