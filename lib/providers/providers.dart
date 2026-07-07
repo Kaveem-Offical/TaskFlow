@@ -8,6 +8,7 @@ import '../models/focus_session_model.dart';
 
 export 'navigation_provider.dart';
 export 'timer_provider.dart';
+export 'categories_provider.dart';
 
 final taskRepositoryProvider = Provider<TaskRepository>((ref) => TaskRepository());
 final eventRepositoryProvider = Provider<EventRepository>((ref) => EventRepository());

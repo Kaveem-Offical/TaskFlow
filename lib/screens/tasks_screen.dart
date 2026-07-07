@@ -15,8 +15,7 @@ class TasksScreen extends ConsumerStatefulWidget {
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
   String _selectedTab = 'Today';
-  final List<String> _tabs = ['Today', 'Next 7 Days', 'All', 'Work', 'Personal'];
-
+  
   // Track expansion states
   bool _isOverdueExpanded = true;
   bool _isTodayExpanded = true;
@@ -25,6 +24,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksStreamProvider);
+    final categories = ref.watch(categoriesProvider);
     final isDesktop = MediaQuery.of(context).size.width >= 768;
 
     return Scaffold(
@@ -34,7 +34,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildTabs(),
+            _buildTabs(categories),
             Expanded(
               child: tasksAsync.when(
                 data: (tasks) {
@@ -42,9 +42,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   final now = DateTime.now();
 
                   // Filter logic based on tabs
-                  if (_selectedTab == 'Work' || _selectedTab == 'Personal') {
-                    filtered = tasks.where((t) => t.category == _selectedTab).toList();
-                  } else if (_selectedTab == 'Today') {
+                  if (_selectedTab == 'Today') {
                     filtered = tasks.where((t) {
                       if (t.dueDate == null) return true;
                       return t.dueDate!.year == now.year &&
@@ -58,6 +56,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       return t.dueDate!.isAfter(now.subtract(const Duration(days: 1))) &&
                           t.dueDate!.isBefore(nextWeek);
                     }).toList();
+                  } else if (_selectedTab != 'All') {
+                    filtered = tasks.where((t) => t.category == _selectedTab).toList();
                   }
 
                   final overdue = tasks.where((t) => 
@@ -184,7 +184,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         ],
       ),
       child: FloatingActionButton(
-        onPressed: () => _showTaskModal(context, ref, null),
+        onPressed: () => showTaskModal(context, ref, null),
         backgroundColor: Colors.transparent,
         elevation: 0,
         highlightElevation: 0,
@@ -204,9 +204,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             width: 600,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.surface.withOpacity(0.95),
+              color: AppTheme.surface.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(40),
-              border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.3)),
+              border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.3)),
               boxShadow: const [
                 BoxShadow(color: Color(0x1A000000), blurRadius: 20, offset: Offset(0, 4)),
               ],
@@ -219,7 +219,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   margin: const EdgeInsets.only(left: 4),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.primary.withOpacity(0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.1),
                   ),
                   child: const Icon(Icons.add, color: AppTheme.primary),
                 ),
@@ -227,7 +227,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 Expanded(
                   child: TextField(
                     readOnly: true,
-                    onTap: () => _showTaskModal(context, ref, null),
+                    onTap: () => showTaskModal(context, ref, null),
                     decoration: const InputDecoration(
                       hintText: 'Add a task... #Work tomorrow at 10am',
                       border: InputBorder.none,
@@ -282,7 +282,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 ),
               ),
               const Text(
-                'Good morning, User.',
+                'Good morning, Kaveem.',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -296,12 +296,21 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  Widget _buildTabs() {
+  Widget _buildTabs(List<String> categories) {
+    final tabs = ['Today', 'Next 7 Days', 'All', ...categories];
+    
+    // Ensure selected tab is valid
+    if (!tabs.contains(_selectedTab)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() => _selectedTab = 'Today');
+      });
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
-        children: _tabs.map((tab) {
+        children: tabs.map((tab) {
           final isSelected = _selectedTab == tab;
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
@@ -332,13 +341,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   Widget _buildTaskCard(Task task, {bool isOverdue = false}) {
     return GestureDetector(
-      onTap: () => _showTaskModal(context, ref, task),
+      onTap: () => showTaskModal(context, ref, task),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: AppTheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.3)),
+          border: Border.all(color: AppTheme.outlineVariant.withValues(alpha: 0.3)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x0C000000), 
@@ -406,18 +415,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                 child: Row(
                                   children: [
                                     if (task.priority == 'High')
-                                      _buildBadge('High Priority', AppTheme.error, AppTheme.errorContainer.withOpacity(0.5)),
+                                      _buildBadge('High Priority', AppTheme.error, AppTheme.errorContainer.withValues(alpha: 0.5)),
                                     if (task.priority == 'Medium')
-                                      _buildBadge('Medium Priority', AppTheme.secondary, AppTheme.secondaryContainer.withOpacity(0.2)),
+                                      _buildBadge('Medium Priority', AppTheme.secondary, AppTheme.secondaryContainer.withValues(alpha: 0.2)),
                                     if (task.priority == 'Low')
-                                      _buildBadge('Low Priority', AppTheme.tertiaryContainer, AppTheme.tertiaryContainer.withOpacity(0.1)),
+                                      _buildBadge('Low Priority', AppTheme.tertiaryContainer, AppTheme.tertiaryContainer.withValues(alpha: 0.1)),
                                     if (task.priority != 'None') const SizedBox(width: 4),
                                     _buildBadge(task.category, AppTheme.onSurfaceVariant, AppTheme.surfaceContainerHigh),
                                     const SizedBox(width: 4),
                                     if (task.startTime != null && task.endTime != null)
                                       Row(
                                         children: [
-                                          Icon(Icons.schedule, size: 12, color: AppTheme.primary),
+                                          const Icon(Icons.schedule, size: 12, color: AppTheme.primary),
                                           const SizedBox(width: 2),
                                           Text(
                                             '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)}',
@@ -495,9 +504,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       ),
     );
   }
+}
 
-  void _showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
-    String title = existingTask?.title ?? '';
+void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
+  String title = existingTask?.title ?? '';
     String category = existingTask?.category ?? 'Work';
     String priority = existingTask?.priority ?? 'Medium';
     
@@ -509,101 +519,182 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final availableCategories = ref.watch(categoriesProvider);
+
+            // Ensure selected category is valid
+            if (!availableCategories.contains(category) && availableCategories.isNotEmpty) {
+              category = availableCategories.first;
+            }
+
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 16, right: 16, top: 24
+                left: 20, right: 20, top: 24
               ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(existingTask == null ? 'Create Task' : 'Edit Task', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(
+                      existingTask == null ? 'Create Task' : 'Edit Task',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.onSurface)
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       initialValue: title,
-                      decoration: const InputDecoration(labelText: 'Task Title'),
+                      style: const TextStyle(color: AppTheme.onSurface, fontWeight: FontWeight.w500, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Task Title',
+                        labelStyle: const TextStyle(color: AppTheme.outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
+                      ),
                       onChanged: (val) => title = val,
                     ),
-                    const SizedBox(height: 16),
-                    Row(
+                    const SizedBox(height: 24),
+                    const Text('Category', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.onSurfaceVariant)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
                       children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: category,
-                            decoration: const InputDecoration(labelText: 'Category'),
-                            items: ['Work', 'Personal'].map((c) {
-                              return DropdownMenuItem(value: c, child: Text(c));
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) setModalState(() => category = val);
+                        ...availableCategories.map((c) {
+                          final isSelected = category == c;
+                          return GestureDetector(
+                            onLongPress: () {
+                              if (availableCategories.length > 1) {
+                                showDialog(context: context, builder: (_) => AlertDialog(
+                                  backgroundColor: AppTheme.surface,
+                                  title: const Text('Delete Category?', style: TextStyle(color: AppTheme.onSurface)),
+                                  content: Text('Are you sure you want to delete "$c"?', style: const TextStyle(color: AppTheme.onSurfaceVariant)),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                                    TextButton(onPressed: () {
+                                      ref.read(categoriesProvider.notifier).removeCategory(c);
+                                      Navigator.pop(context);
+                                    }, child: const Text('Delete', style: TextStyle(color: AppTheme.error))),
+                                  ],
+                                ));
+                              }
                             },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: priority,
-                            decoration: const InputDecoration(labelText: 'Priority'),
-                            items: ['Low', 'Medium', 'High'].map((p) {
-                              return DropdownMenuItem(value: p, child: Text(p));
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) setModalState(() => priority = val);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(dueDate == null ? 'Set Due Date' : 'Due: ${DateFormat.yMMMd().format(dueDate!)}'),
-                      trailing: const Icon(Icons.calendar_today, color: AppTheme.primary),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: dueDate ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setModalState(() => dueDate = picked);
-                        }
-                      },
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(startTime == null ? 'Start Time' : startTime!.format(context), style: const TextStyle(fontSize: 14)),
-                            trailing: const Icon(Icons.access_time, size: 20),
-                            onTap: () async {
-                              final picked = await showTimePicker(context: context, initialTime: startTime ?? TimeOfDay.now());
-                              if (picked != null) setModalState(() => startTime = picked);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(endTime == null ? 'End Time' : endTime!.format(context), style: const TextStyle(fontSize: 14)),
-                            trailing: const Icon(Icons.access_time, size: 20),
-                            onTap: () async {
-                              final picked = await showTimePicker(context: context, initialTime: endTime ?? TimeOfDay.now());
-                              if (picked != null) setModalState(() => endTime = picked);
-                            },
-                          ),
+                            child: ChoiceChip(
+                              label: Text(c, style: TextStyle(color: isSelected ? AppTheme.onPrimary : AppTheme.onSurface, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                              selected: isSelected,
+                              onSelected: (val) {
+                                if (val) setModalState(() => category = c);
+                              },
+                              backgroundColor: AppTheme.surfaceContainerHigh,
+                              selectedColor: AppTheme.primary,
+                              showCheckmark: false,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide.none),
+                            ),
+                          );
+                        }),
+                        ActionChip(
+                          label: const Text('+ Add', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide.none),
+                          onPressed: () {
+                            String newCategory = '';
+                            showDialog(context: context, builder: (_) => AlertDialog(
+                              backgroundColor: AppTheme.surface,
+                              title: const Text('New Category', style: TextStyle(color: AppTheme.onSurface)),
+                              content: TextField(
+                                autofocus: true,
+                                style: const TextStyle(color: AppTheme.onSurface),
+                                decoration: const InputDecoration(hintText: 'Category Name', hintStyle: TextStyle(color: AppTheme.outlineVariant)),
+                                onChanged: (v) => newCategory = v,
+                              ),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                                TextButton(onPressed: () {
+                                  if (newCategory.isNotEmpty) {
+                                    ref.read(categoriesProvider.notifier).addCategory(newCategory);
+                                  }
+                                  Navigator.pop(context);
+                                }, child: const Text('Add')),
+                              ],
+                            ));
+                          },
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
+                    DropdownButtonFormField<String>(
+                      value: priority,
+                      style: const TextStyle(color: AppTheme.onSurface, fontWeight: FontWeight.w500),
+                      dropdownColor: AppTheme.surfaceContainer,
+                      decoration: InputDecoration(
+                        labelText: 'Priority',
+                        labelStyle: const TextStyle(color: AppTheme.outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
+                      ),
+                      items: ['Low', 'Medium', 'High'].map((p) {
+                        return DropdownMenuItem(value: p, child: Text(p));
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => priority = val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            title: Text(dueDate == null ? 'Set Due Date' : 'Due: ${DateFormat.yMMMd().format(dueDate!)}', style: const TextStyle(color: AppTheme.onSurface, fontWeight: FontWeight.w500)),
+                            trailing: const Icon(Icons.calendar_today, color: AppTheme.primary),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: dueDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (picked != null) {
+                                setModalState(() => dueDate = picked);
+                              }
+                            },
+                          ),
+                          const Divider(height: 1, indent: 16, endIndent: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ListTile(
+                                  title: Text(startTime == null ? 'Start Time' : startTime!.format(context), style: const TextStyle(fontSize: 14, color: AppTheme.onSurface)),
+                                  trailing: const Icon(Icons.access_time, size: 20, color: AppTheme.outline),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(context: context, initialTime: startTime ?? TimeOfDay.now());
+                                    if (picked != null) setModalState(() => startTime = picked);
+                                  },
+                                ),
+                              ),
+                              Container(height: 30, width: 1, color: AppTheme.outlineVariant),
+                              Expanded(
+                                child: ListTile(
+                                  title: Text(endTime == null ? 'End Time' : endTime!.format(context), style: const TextStyle(fontSize: 14, color: AppTheme.onSurface)),
+                                  trailing: const Icon(Icons.access_time, size: 20, color: AppTheme.outline),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(context: context, initialTime: endTime ?? TimeOfDay.now());
+                                    if (picked != null) setModalState(() => endTime = picked);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
                     ElevatedButton(
                       onPressed: () {
                         if (title.isNotEmpty) {
@@ -641,11 +732,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         foregroundColor: AppTheme.onPrimary,
-                        minimumSize: const Size.fromHeight(48),
+                        minimumSize: const Size.fromHeight(56),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: Text(existingTask == null ? 'Add Task' : 'Save Changes'),
+                      child: Text(existingTask == null ? 'Add Task' : 'Save Changes', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -655,4 +747,3 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       }
     );
   }
-}

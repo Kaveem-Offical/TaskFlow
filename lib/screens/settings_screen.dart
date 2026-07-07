@@ -27,8 +27,8 @@ class SettingsScreen extends ConsumerWidget {
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
               child: Text(user?.email?.substring(0, 1).toUpperCase() ?? 'U'),
             ),
-            title: Text(user?.displayName ?? 'User Name', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(user?.email ?? 'user@example.com'),
+            title: Text(user?.displayName ?? 'Kaveem Uddin', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(user?.email ?? 'kaveem@kaveem.com'),
           ),
           const Divider(),
           const Padding(
