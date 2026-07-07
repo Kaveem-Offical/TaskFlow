@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/settings_screen.dart';
+import 'screens/root_screen.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
@@ -33,7 +33,7 @@ class TaskFlowApp extends ConsumerWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD), brightness: Brightness.dark),
         useMaterial3: true,
       ),
-      home: const SettingsScreen(),
+      home: const RootScreen(),
     );
   }
 }
