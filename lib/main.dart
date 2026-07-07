@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'screens/tasks_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,14 +22,10 @@ class TaskFlowApp extends StatelessWidget {
     return MaterialApp(
       title: 'TaskFlow Productivity Suite',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD)),
         useMaterial3: true,
       ),
-      home: const Scaffold(
-        body: Center(
-          child: Text('TaskFlow Initialized'),
-        ),
-      ),
+      home: const TasksScreen(),
     );
   }
 }
