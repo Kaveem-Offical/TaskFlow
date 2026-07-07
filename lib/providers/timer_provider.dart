@@ -28,12 +28,16 @@ class TimerState {
   }
 }
 
-class TimerNotifier extends StateNotifier<TimerState> {
+class TimerNotifier extends Notifier<TimerState> {
   Timer? _timer;
-  final Ref ref;
 
-  TimerNotifier(this.ref) : super(TimerState(remainingSeconds: 25 * 60, isRunning: false, initialDurationMinutes: 25)) {
+  @override
+  TimerState build() {
+    ref.onDispose(() {
+      _timer?.cancel();
+    });
     _loadState();
+    return TimerState(remainingSeconds: 25 * 60, isRunning: false, initialDurationMinutes: 25);
   }
 
   Future<void> _loadState() async {
@@ -114,14 +118,6 @@ class TimerNotifier extends StateNotifier<TimerState> {
     
     reset();
   }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 }
 
-final timerProvider = StateNotifierProvider<TimerNotifier, TimerState>((ref) {
-  return TimerNotifier(ref);
-});
+final timerProvider = NotifierProvider<TimerNotifier, TimerState>(TimerNotifier.new);

@@ -5,11 +5,13 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.authStateChanges();
 });
 
-class AuthNotifier extends StateNotifier<User?> {
-  AuthNotifier() : super(FirebaseAuth.instance.currentUser) {
+class AuthNotifier extends Notifier<User?> {
+  @override
+  User? build() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       state = user;
     });
+    return FirebaseAuth.instance.currentUser;
   }
 
   Future<void> signOut() async {
@@ -17,6 +19,4 @@ class AuthNotifier extends StateNotifier<User?> {
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, User?>((ref) {
-  return AuthNotifier();
-});
+final authProvider = NotifierProvider<AuthNotifier, User?>(AuthNotifier.new);
