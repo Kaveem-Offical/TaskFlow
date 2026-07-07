@@ -278,7 +278,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
-                  color: AppTheme.outline,
+                  color: AppTheme.onSurfaceVariant, // Darker contrast
                 ),
               ),
               const Text(

@@ -83,21 +83,36 @@ class FocusScreen extends ConsumerWidget {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '$minutes:$seconds',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 64,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.onSurface,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (timerState.isRunning)
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: AppTheme.outline),
+                            onPressed: () => ref.read(timerProvider.notifier).subtractTime(5),
+                          ),
+                        Text(
+                          '$minutes:$seconds',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 56,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                        if (timerState.isRunning)
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline, color: AppTheme.outline),
+                            onPressed: () => ref.read(timerProvider.notifier).addTime(5),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       timerState.isRunning ? 'Focusing...' : 'Ready to focus',
                       style: const TextStyle(
                         fontSize: 16,
-                        color: AppTheme.outline,
-                        fontWeight: FontWeight.w500,
+                        color: AppTheme.onSurfaceVariant, // Darkened for contrast
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -137,14 +152,28 @@ class FocusScreen extends ConsumerWidget {
                     child: const Text('Pause', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                 const SizedBox(width: 16),
-                IconButton(
-                  onPressed: () {
-                    ref.read(timerProvider.notifier).reset();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  iconSize: 32,
-                  color: AppTheme.outline,
-                ),
+                if (timerState.isRunning)
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.read(timerProvider.notifier).endEarly();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.surfaceContainerHigh,
+                      foregroundColor: AppTheme.error,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    ),
+                    child: const Text('End', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  )
+                else
+                  IconButton(
+                    onPressed: () {
+                      ref.read(timerProvider.notifier).reset();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    iconSize: 32,
+                    color: AppTheme.outline,
+                  ),
               ],
             ),
             const SizedBox(height: 48),

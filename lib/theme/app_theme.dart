@@ -30,8 +30,8 @@ class AppTheme {
   static const Color surfaceVariant = Color(0xFFdce2f3);
   static const Color onSurfaceVariant = Color(0xFF464555);
   
-  static const Color outline = Color(0xFF777587);
-  static const Color outlineVariant = Color(0xFFc7c4d8);
+  static const Color outline = Color(0xFF5A5869); // Darkened from 0xFF777587 for better contrast
+  static const Color outlineVariant = Color(0xFFB0ADC0); // Darkened from 0xFFc7c4d8
   
   static const Color surfaceContainerHighest = Color(0xFFdce2f3);
   static const Color surfaceContainerHigh = Color(0xFFe2e8f8);

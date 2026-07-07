@@ -100,6 +100,54 @@ class TimerNotifier extends Notifier<TimerState> {
     });
   }
 
+  void addTime(int minutes) {
+    if (state.remainingSeconds > 0) {
+      state = state.copyWith(
+        remainingSeconds: state.remainingSeconds + (minutes * 60),
+        initialDurationMinutes: state.initialDurationMinutes + minutes,
+      );
+      _updatePrefsTime();
+    }
+  }
+
+  void subtractTime(int minutes) {
+    if (state.remainingSeconds > minutes * 60) {
+      state = state.copyWith(
+        remainingSeconds: state.remainingSeconds - (minutes * 60),
+        initialDurationMinutes: state.initialDurationMinutes - minutes > 0 ? state.initialDurationMinutes - minutes : 1,
+      );
+      _updatePrefsTime();
+    } else if (state.remainingSeconds > 60) {
+      // Don't let it go below 1 minute if subtracting
+      state = state.copyWith(
+        remainingSeconds: 60,
+      );
+      _updatePrefsTime();
+    }
+  }
+
+  Future<void> _updatePrefsTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (state.isRunning) {
+      final endTime = DateTime.now().millisecondsSinceEpoch + (state.remainingSeconds * 1000);
+      prefs.setInt('timer_end_time', endTime);
+    }
+    prefs.setInt('timer_duration', state.initialDurationMinutes);
+  }
+
+  void endEarly() {
+    if (state.isRunning) {
+      _timer?.cancel();
+      state = state.copyWith(isRunning: false);
+      
+      // Calculate how many minutes were actually spent
+      int minutesSpent = state.initialDurationMinutes - (state.remainingSeconds / 60).floor();
+      if (minutesSpent < 1) minutesSpent = 1; // Log at least 1 minute if they ended early but did something
+      
+      _onComplete(overrideMinutes: minutesSpent);
+    }
+  }
+
   void pause() async {
     _timer?.cancel();
     state = state.copyWith(isRunning: false);
@@ -114,13 +162,13 @@ class TimerNotifier extends Notifier<TimerState> {
     state = TimerState(remainingSeconds: state.initialDurationMinutes * 60, isRunning: false, initialDurationMinutes: state.initialDurationMinutes, selectedTaskId: state.selectedTaskId);
   }
 
-  void _onComplete() async {
+  void _onComplete({int? overrideMinutes}) async {
     final prefs = await SharedPreferences.getInstance();
     prefs.remove('timer_end_time');
     
     ref.read(focusSessionRepositoryProvider).addFocusSession(FocusSession(
       id: '',
-      durationMinutes: state.initialDurationMinutes,
+      durationMinutes: overrideMinutes ?? state.initialDurationMinutes,
       timestamp: DateTime.now(),
       linkedTaskId: state.selectedTaskId,
     ));
