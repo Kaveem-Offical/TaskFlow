@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'screens/calendar_screen.dart';
+import 'screens/focus_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +25,7 @@ class TaskFlowApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD)),
         useMaterial3: true,
       ),
-      home: const CalendarScreen(),
+      home: const FocusScreen(),
     );
   }
 }

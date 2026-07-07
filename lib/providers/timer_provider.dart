@@ -1,0 +1,127 @@
+import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'providers.dart';
+import '../models/focus_session_model.dart';
+
+class TimerState {
+  final int remainingSeconds;
+  final bool isRunning;
+  final int initialDurationMinutes;
+
+  TimerState({
+    required this.remainingSeconds,
+    required this.isRunning,
+    required this.initialDurationMinutes,
+  });
+
+  TimerState copyWith({
+    int? remainingSeconds,
+    bool? isRunning,
+    int? initialDurationMinutes,
+  }) {
+    return TimerState(
+      remainingSeconds: remainingSeconds ?? this.remainingSeconds,
+      isRunning: isRunning ?? this.isRunning,
+      initialDurationMinutes: initialDurationMinutes ?? this.initialDurationMinutes,
+    );
+  }
+}
+
+class TimerNotifier extends StateNotifier<TimerState> {
+  Timer? _timer;
+  final Ref ref;
+
+  TimerNotifier(this.ref) : super(TimerState(remainingSeconds: 25 * 60, isRunning: false, initialDurationMinutes: 25)) {
+    _loadState();
+  }
+
+  Future<void> _loadState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final endTime = prefs.getInt('timer_end_time');
+    final duration = prefs.getInt('timer_duration') ?? 25;
+    
+    if (endTime != null) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (endTime > now) {
+        final remaining = ((endTime - now) / 1000).round();
+        state = TimerState(remainingSeconds: remaining, isRunning: true, initialDurationMinutes: duration);
+        _startTimerTick();
+      } else {
+        prefs.remove('timer_end_time');
+        state = TimerState(remainingSeconds: duration * 60, isRunning: false, initialDurationMinutes: duration);
+      }
+    } else {
+      state = state.copyWith(initialDurationMinutes: duration, remainingSeconds: duration * 60);
+    }
+  }
+
+  void setDuration(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setInt('timer_duration', minutes);
+    state = TimerState(remainingSeconds: minutes * 60, isRunning: false, initialDurationMinutes: minutes);
+    _timer?.cancel();
+  }
+
+  void start() async {
+    if (state.isRunning || state.remainingSeconds <= 0) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final endTime = DateTime.now().millisecondsSinceEpoch + (state.remainingSeconds * 1000);
+    prefs.setInt('timer_end_time', endTime);
+    prefs.setInt('timer_duration', state.initialDurationMinutes);
+    
+    state = state.copyWith(isRunning: true);
+    _startTimerTick();
+  }
+
+  void _startTimerTick() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (state.remainingSeconds > 0) {
+        state = state.copyWith(remainingSeconds: state.remainingSeconds - 1);
+      } else {
+        _timer?.cancel();
+        state = state.copyWith(isRunning: false);
+        _onComplete();
+      }
+    });
+  }
+
+  void pause() async {
+    _timer?.cancel();
+    state = state.copyWith(isRunning: false);
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('timer_end_time'); 
+  }
+
+  void reset() async {
+    _timer?.cancel();
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('timer_end_time');
+    state = TimerState(remainingSeconds: state.initialDurationMinutes * 60, isRunning: false, initialDurationMinutes: state.initialDurationMinutes);
+  }
+
+  void _onComplete() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('timer_end_time');
+    
+    ref.read(focusSessionRepositoryProvider).addFocusSession(FocusSession(
+      id: '',
+      durationMinutes: state.initialDurationMinutes,
+      timestamp: DateTime.now(),
+    ));
+    
+    reset();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}
+
+final timerProvider = StateNotifierProvider<TimerNotifier, TimerState>((ref) {
+  return TimerNotifier(ref);
+});
