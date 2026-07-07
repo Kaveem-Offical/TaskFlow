@@ -8,6 +8,8 @@ class Task {
   final String priority;
   final String category;
   final DateTime? dueDate;
+  final DateTime? startTime;
+  final DateTime? endTime;
 
   Task({
     required this.id,
@@ -17,6 +19,8 @@ class Task {
     this.priority = 'Low',
     this.category = 'General',
     this.dueDate,
+    this.startTime,
+    this.endTime,
   });
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
@@ -29,6 +33,8 @@ class Task {
       priority: data['priority'] ?? 'Low',
       category: data['category'] ?? 'General',
       dueDate: data['dueDate'] != null ? (data['dueDate'] as Timestamp).toDate() : null,
+      startTime: data['startTime'] != null ? (data['startTime'] as Timestamp).toDate() : null,
+      endTime: data['endTime'] != null ? (data['endTime'] as Timestamp).toDate() : null,
     );
   }
 
@@ -40,6 +46,8 @@ class Task {
       'priority': priority,
       'category': category,
       if (dueDate != null) 'dueDate': Timestamp.fromDate(dueDate!),
+      if (startTime != null) 'startTime': Timestamp.fromDate(startTime!),
+      if (endTime != null) 'endTime': Timestamp.fromDate(endTime!),
     };
   }
   
@@ -50,6 +58,8 @@ class Task {
     String? priority,
     String? category,
     DateTime? dueDate,
+    DateTime? startTime,
+    DateTime? endTime,
   }) {
     return Task(
       id: id,
@@ -59,6 +69,8 @@ class Task {
       priority: priority ?? this.priority,
       category: category ?? this.category,
       dueDate: dueDate ?? this.dueDate,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
     );
   }
 }

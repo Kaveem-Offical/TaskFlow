@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
 import '../theme/app_theme.dart';
+import '../providers/providers.dart';
 import 'tasks_screen.dart';
 import 'calendar_screen.dart';
 import 'focus_screen.dart';
@@ -8,16 +10,14 @@ import 'insights_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
 
-class RootScreen extends StatefulWidget {
+class RootScreen extends ConsumerStatefulWidget {
   const RootScreen({super.key});
 
   @override
-  State<RootScreen> createState() => _RootScreenState();
+  ConsumerState<RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends State<RootScreen> {
-  int _currentIndex = 0;
-  
+class _RootScreenState extends ConsumerState<RootScreen> {
   final List<Widget> _screens = [
     const TasksScreen(),
     const CalendarScreen(),
@@ -29,13 +29,15 @@ class _RootScreenState extends State<RootScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = ref.watch(navigationProvider);
+
     return Scaffold(
       extendBody: true, // Needed for floating/glassmorphism navbar
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: IndexedStack(
-          key: ValueKey<int>(_currentIndex),
-          index: _currentIndex,
+          key: ValueKey<int>(currentIndex),
+          index: currentIndex,
           children: _screens,
         ),
       ),
@@ -49,11 +51,9 @@ class _RootScreenState extends State<RootScreen> {
               border: Border(top: BorderSide(color: AppTheme.outlineVariant.withOpacity(0.3))),
             ),
             child: BottomNavigationBar(
-              currentIndex: _currentIndex,
+              currentIndex: currentIndex,
               onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
+                ref.read(navigationProvider.notifier).setIndex(index);
               },
               backgroundColor: Colors.transparent,
               elevation: 0,

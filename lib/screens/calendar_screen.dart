@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/providers.dart';
 import '../models/task_model.dart';
 import '../models/event_model.dart';
+import '../theme/app_theme.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -26,10 +27,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   List<dynamic> _getEventsForDay(DateTime day, List<Task> tasks, List<Event> events) {
     List<dynamic> dayItems = [];
     
-    // Add tasks due on this day
+    // Add tasks due or starting on this day
     dayItems.addAll(tasks.where((t) {
-      if (t.dueDate == null) return false;
-      return isSameDay(t.dueDate, day);
+      if (t.startTime != null) {
+        return isSameDay(t.startTime, day);
+      } else if (t.dueDate != null) {
+        return isSameDay(t.dueDate, day);
+      }
+      return false;
     }));
 
     // Add events on this day
@@ -46,11 +51,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final eventsAsync = ref.watch(eventsStreamProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FF),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Calendar', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFF9F9FF),
-        elevation: 0,
       ),
       body: tasksAsync.when(
         data: (tasks) {
@@ -80,15 +83,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     },
                     calendarStyle: const CalendarStyle(
                       todayDecoration: BoxDecoration(
-                        color: Color(0xFFC3C0FF),
+                        color: AppTheme.surfaceContainerHighest,
                         shape: BoxShape.circle,
                       ),
                       selectedDecoration: BoxDecoration(
-                        color: Color(0xFF3525CD),
+                        color: AppTheme.primary,
                         shape: BoxShape.circle,
                       ),
                       markerDecoration: BoxDecoration(
-                        color: Color(0xFF3525CD),
+                        color: AppTheme.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -98,7 +101,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     child: selectedDayItems.isEmpty
                         ? const Center(child: Text('No events or tasks for this day.'))
                         : ListView.builder(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 160.0), // Generous bottom padding
                             itemCount: selectedDayItems.length,
                             itemBuilder: (context, index) {
                               final item = selectedDayItems[index];
@@ -121,21 +124,30 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error loading tasks: $e')),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateEventModal(context, ref),
-        backgroundColor: const Color(0xFF3525CD),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80.0), // Shift FAB up to avoid navbar
+        child: FloatingActionButton(
+          onPressed: () => _showCreateEventModal(context, ref),
+          backgroundColor: AppTheme.primary,
+          child: const Icon(Icons.add, color: AppTheme.onPrimary),
+        ),
       ),
     );
   }
 
   Widget _buildTaskTile(Task task) {
+    String subtitle = 'Task';
+    if (task.startTime != null && task.endTime != null) {
+      subtitle = '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)} (Task)';
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
+      color: AppTheme.surface,
       child: ListTile(
-        leading: Icon(Icons.check_circle_outline, color: task.isCompleted ? Colors.green : Colors.grey),
-        title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        subtitle: const Text('Task'),
+        leading: Icon(Icons.check_circle_outline, color: task.isCompleted ? AppTheme.tertiaryContainer : AppTheme.outlineVariant),
+        title: Text(task.title, style: TextStyle(fontWeight: FontWeight.w500, decoration: task.isCompleted ? TextDecoration.lineThrough : null)),
+        subtitle: Text(subtitle),
       ),
     );
   }
@@ -143,8 +155,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget _buildEventTile(Event event) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
+      color: AppTheme.surface,
       child: ListTile(
-        leading: const Icon(Icons.event, color: Color(0xFF3525CD)),
+        leading: const Icon(Icons.event, color: AppTheme.primary),
         title: Text(event.title, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text('${DateFormat.jm().format(event.startTime)} - ${DateFormat.jm().format(event.endTime)}'),
       ),
@@ -159,6 +172,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -167,60 +182,69 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 bottom: MediaQuery.of(context).viewInsets.bottom,
                 left: 16, right: 16, top: 24
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Create Event', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  TextField(
-                    decoration: const InputDecoration(labelText: 'Event Title'),
-                    onChanged: (val) => title = val,
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    title: Text('Start Time: ${startTime.format(context)}'),
-                    trailing: const Icon(Icons.access_time),
-                    onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: startTime);
-                      if (picked != null) {
-                        setModalState(() {
-                          startTime = picked;
-                        });
-                      }
-                    },
-                  ),
-                  ListTile(
-                    title: Text('End Time: ${endTime.format(context)}'),
-                    trailing: const Icon(Icons.access_time),
-                    onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: endTime);
-                      if (picked != null) {
-                        setModalState(() {
-                          endTime = picked;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (title.isNotEmpty) {
-                        final now = _selectedDay ?? DateTime.now();
-                        final startDateTime = DateTime(now.year, now.month, now.day, startTime.hour, startTime.minute);
-                        final endDateTime = DateTime(now.year, now.month, now.day, endTime.hour, endTime.minute);
-                        
-                        ref.read(eventRepositoryProvider).addEvent(Event(
-                          id: '',
-                          title: title,
-                          startTime: startDateTime,
-                          endTime: endDateTime,
-                        ));
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: const Text('Add Event'),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Create Event', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    TextField(
+                      decoration: const InputDecoration(labelText: 'Event Title'),
+                      onChanged: (val) => title = val,
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('Start Time: ${startTime.format(context)}'),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final picked = await showTimePicker(context: context, initialTime: startTime);
+                        if (picked != null) {
+                          setModalState(() {
+                            startTime = picked;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('End Time: ${endTime.format(context)}'),
+                      trailing: const Icon(Icons.access_time),
+                      onTap: () async {
+                        final picked = await showTimePicker(context: context, initialTime: endTime);
+                        if (picked != null) {
+                          setModalState(() {
+                            endTime = picked;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: AppTheme.onPrimary,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      onPressed: () {
+                        if (title.isNotEmpty) {
+                          final now = _selectedDay ?? DateTime.now();
+                          final startDateTime = DateTime(now.year, now.month, now.day, startTime.hour, startTime.minute);
+                          final endDateTime = DateTime(now.year, now.month, now.day, endTime.hour, endTime.minute);
+                          
+                          ref.read(eventRepositoryProvider).addEvent(Event(
+                            id: '',
+                            title: title,
+                            startTime: startDateTime,
+                            endTime: endDateTime,
+                          ));
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: const Text('Add Event'),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             );
           }

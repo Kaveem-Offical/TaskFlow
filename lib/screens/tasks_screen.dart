@@ -65,12 +65,11 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       t.dueDate != null && 
                       t.dueDate!.isBefore(DateTime(now.year, now.month, now.day))).toList();
 
-                  // Only show tasks in "Today" or "Other" categories if they match the filter, but separate them
                   final active = filtered.where((t) => !t.isCompleted && !overdue.contains(t)).toList();
                   final completed = filtered.where((t) => t.isCompleted).toList();
 
                   return ListView(
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, isDesktop ? 160 : 120),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 160), // Increased bottom padding for footer
                     children: [
                       if (overdue.isNotEmpty)
                         _buildExpandableSection(
@@ -185,7 +184,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         ],
       ),
       child: FloatingActionButton(
-        onPressed: () => _showAddTaskModal(context, ref),
+        onPressed: () => _showTaskModal(context, ref, null),
         backgroundColor: Colors.transparent,
         elevation: 0,
         highlightElevation: 0,
@@ -228,7 +227,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 Expanded(
                   child: TextField(
                     readOnly: true,
-                    onTap: () => _showAddTaskModal(context, ref),
+                    onTap: () => _showTaskModal(context, ref, null),
                     decoration: const InputDecoration(
                       hintText: 'Add a task... #Work tomorrow at 10am',
                       border: InputBorder.none,
@@ -288,8 +287,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.primary,
-                  // Falling back to Inter if Geist is unavailable via GoogleFonts natively in this context
-                  // We already applied Inter to textTheme globally
                 ),
               ),
             ],
@@ -334,123 +331,147 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 
   Widget _buildTaskCard(Task task, {bool isOverdue = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.3)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0C000000), // 5% opacity
-            blurRadius: 20,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (isOverdue)
-                Container(width: 4, color: AppTheme.error),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          ref.read(taskRepositoryProvider).updateTask(task.copyWith(isCompleted: !task.isCompleted));
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: task.isCompleted ? AppTheme.tertiaryContainer : AppTheme.primary,
-                              width: 2,
+    return GestureDetector(
+      onTap: () => _showTaskModal(context, ref, task),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.3)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0C000000), 
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (isOverdue)
+                  Container(width: 4, color: AppTheme.error),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            ref.read(taskRepositoryProvider).updateTask(task.copyWith(isCompleted: !task.isCompleted));
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: task.isCompleted ? AppTheme.tertiaryContainer : AppTheme.primary,
+                                width: 2,
+                              ),
+                              color: task.isCompleted ? AppTheme.tertiaryContainer : Colors.transparent,
                             ),
-                            color: task.isCompleted ? AppTheme.tertiaryContainer : Colors.transparent,
-                          ),
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 200),
-                            opacity: task.isCompleted ? 1.0 : 0.0,
-                            child: const Icon(Icons.check, size: 16, color: AppTheme.onTertiary),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedDefaultTextStyle(
+                            child: AnimatedOpacity(
                               duration: const Duration(milliseconds: 200),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                                color: task.isCompleted ? AppTheme.outline : AppTheme.onSurface,
-                              ),
-                              child: Text(task.title),
+                              opacity: task.isCompleted ? 1.0 : 0.0,
+                              child: const Icon(Icons.check, size: 16, color: AppTheme.onTertiary),
                             ),
-                            const SizedBox(height: 4),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  if (task.priority == 'High')
-                                    _buildBadge('High Priority', AppTheme.error, AppTheme.errorContainer.withOpacity(0.5)),
-                                  if (task.priority == 'Medium')
-                                    _buildBadge('Medium Priority', AppTheme.secondary, AppTheme.secondaryContainer.withOpacity(0.2)),
-                                  if (task.priority == 'Low')
-                                    _buildBadge('Low Priority', AppTheme.tertiaryContainer, AppTheme.tertiaryContainer.withOpacity(0.1)),
-                                  if (task.priority != 'None') const SizedBox(width: 4),
-                                  _buildBadge(task.category, AppTheme.onSurfaceVariant, AppTheme.surfaceContainerHigh),
-                                  const SizedBox(width: 4),
-                                  if (task.dueDate != null)
-                                    Row(
-                                      children: [
-                                        Icon(Icons.schedule, size: 12, color: isOverdue ? AppTheme.error : AppTheme.primary),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          DateFormat.jm().format(task.dueDate!),
-                                          style: GoogleFonts.jetBrainsMono(
-                                            fontSize: 10,
-                                            color: isOverdue ? AppTheme.error : AppTheme.primary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!task.isCompleted)
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.surfaceContainer,
                           ),
-                          child: const Icon(Icons.play_arrow, color: AppTheme.primary),
                         ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 200),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                                  color: task.isCompleted ? AppTheme.outline : AppTheme.onSurface,
+                                ),
+                                child: Text(task.title),
+                              ),
+                              const SizedBox(height: 4),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    if (task.priority == 'High')
+                                      _buildBadge('High Priority', AppTheme.error, AppTheme.errorContainer.withOpacity(0.5)),
+                                    if (task.priority == 'Medium')
+                                      _buildBadge('Medium Priority', AppTheme.secondary, AppTheme.secondaryContainer.withOpacity(0.2)),
+                                    if (task.priority == 'Low')
+                                      _buildBadge('Low Priority', AppTheme.tertiaryContainer, AppTheme.tertiaryContainer.withOpacity(0.1)),
+                                    if (task.priority != 'None') const SizedBox(width: 4),
+                                    _buildBadge(task.category, AppTheme.onSurfaceVariant, AppTheme.surfaceContainerHigh),
+                                    const SizedBox(width: 4),
+                                    if (task.startTime != null && task.endTime != null)
+                                      Row(
+                                        children: [
+                                          Icon(Icons.schedule, size: 12, color: AppTheme.primary),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)}',
+                                            style: GoogleFonts.jetBrainsMono(
+                                              fontSize: 10,
+                                              color: AppTheme.primary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else if (task.dueDate != null)
+                                      Row(
+                                        children: [
+                                          Icon(Icons.event, size: 12, color: isOverdue ? AppTheme.error : AppTheme.primary),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            DateFormat('MMM d').format(task.dueDate!),
+                                            style: GoogleFonts.jetBrainsMono(
+                                              fontSize: 10,
+                                              color: isOverdue ? AppTheme.error : AppTheme.primary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!task.isCompleted)
+                          GestureDetector(
+                            onTap: () {
+                              ref.read(timerProvider.notifier).selectTask(task.id);
+                              ref.read(navigationProvider.notifier).setIndex(2); // Jump to Focus screen
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.surfaceContainer,
+                              ),
+                              child: const Icon(Icons.play_arrow, color: AppTheme.primary),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -475,10 +496,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  void _showAddTaskModal(BuildContext context, WidgetRef ref) {
-    String title = '';
-    String category = 'Work';
-    String priority = 'Medium';
+  void _showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
+    String title = existingTask?.title ?? '';
+    String category = existingTask?.category ?? 'Work';
+    String priority = existingTask?.priority ?? 'Medium';
+    
+    DateTime? dueDate = existingTask?.dueDate;
+    TimeOfDay? startTime = existingTask?.startTime != null ? TimeOfDay.fromDateTime(existingTask!.startTime!) : null;
+    TimeOfDay? endTime = existingTask?.endTime != null ? TimeOfDay.fromDateTime(existingTask!.endTime!) : null;
     
     showModalBottomSheet(
       context: context,
@@ -493,60 +518,136 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 bottom: MediaQuery.of(context).viewInsets.bottom,
                 left: 16, right: 16, top: 24
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Create Task', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  TextField(
-                    decoration: const InputDecoration(labelText: 'Task Title'),
-                    onChanged: (val) => title = val,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: category,
-                    decoration: const InputDecoration(labelText: 'Category'),
-                    items: ['Work', 'Personal'].map((c) {
-                      return DropdownMenuItem(value: c, child: Text(c));
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) setModalState(() => category = val);
-                    },
-                  ),
-                  DropdownButtonFormField<String>(
-                    value: priority,
-                    decoration: const InputDecoration(labelText: 'Priority'),
-                    items: ['Low', 'Medium', 'High'].map((p) {
-                      return DropdownMenuItem(value: p, child: Text(p));
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) setModalState(() => priority = val);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (title.isNotEmpty) {
-                        ref.read(taskRepositoryProvider).addTask(Task(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          title: title,
-                          isCompleted: false,
-                          category: category,
-                          priority: priority,
-                          dueDate: DateTime.now().add(const Duration(hours: 2)),
-                        ));
-                        Navigator.pop(context);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: AppTheme.onPrimary,
-                      minimumSize: const Size.fromHeight(48),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(existingTask == null ? 'Create Task' : 'Edit Task', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    TextFormField(
+                      initialValue: title,
+                      decoration: const InputDecoration(labelText: 'Task Title'),
+                      onChanged: (val) => title = val,
                     ),
-                    child: const Text('Add Task'),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: category,
+                            decoration: const InputDecoration(labelText: 'Category'),
+                            items: ['Work', 'Personal'].map((c) {
+                              return DropdownMenuItem(value: c, child: Text(c));
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setModalState(() => category = val);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: priority,
+                            decoration: const InputDecoration(labelText: 'Priority'),
+                            items: ['Low', 'Medium', 'High'].map((p) {
+                              return DropdownMenuItem(value: p, child: Text(p));
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setModalState(() => priority = val);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(dueDate == null ? 'Set Due Date' : 'Due: ${DateFormat.yMMMd().format(dueDate!)}'),
+                      trailing: const Icon(Icons.calendar_today, color: AppTheme.primary),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: dueDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setModalState(() => dueDate = picked);
+                        }
+                      },
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(startTime == null ? 'Start Time' : startTime!.format(context), style: const TextStyle(fontSize: 14)),
+                            trailing: const Icon(Icons.access_time, size: 20),
+                            onTap: () async {
+                              final picked = await showTimePicker(context: context, initialTime: startTime ?? TimeOfDay.now());
+                              if (picked != null) setModalState(() => startTime = picked);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(endTime == null ? 'End Time' : endTime!.format(context), style: const TextStyle(fontSize: 14)),
+                            trailing: const Icon(Icons.access_time, size: 20),
+                            onTap: () async {
+                              final picked = await showTimePicker(context: context, initialTime: endTime ?? TimeOfDay.now());
+                              if (picked != null) setModalState(() => endTime = picked);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (title.isNotEmpty) {
+                          DateTime? fullStartTime;
+                          DateTime? fullEndTime;
+                          
+                          if (dueDate != null) {
+                            if (startTime != null) {
+                              fullStartTime = DateTime(dueDate!.year, dueDate!.month, dueDate!.day, startTime!.hour, startTime!.minute);
+                            }
+                            if (endTime != null) {
+                              fullEndTime = DateTime(dueDate!.year, dueDate!.month, dueDate!.day, endTime!.hour, endTime!.minute);
+                            }
+                          }
+
+                          final task = Task(
+                            id: existingTask?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                            title: title,
+                            isCompleted: existingTask?.isCompleted ?? false,
+                            category: category,
+                            priority: priority,
+                            dueDate: dueDate ?? existingTask?.dueDate ?? DateTime.now(),
+                            startTime: fullStartTime,
+                            endTime: fullEndTime,
+                          );
+
+                          if (existingTask == null) {
+                            ref.read(taskRepositoryProvider).addTask(task);
+                          } else {
+                            ref.read(taskRepositoryProvider).updateTask(task);
+                          }
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: AppTheme.onPrimary,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: Text(existingTask == null ? 'Add Task' : 'Save Changes'),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             );
           }
