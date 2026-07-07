@@ -1,25 +1,40 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import '../models/task_model.dart';
 
 class TaskRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late final CollectionReference _tasksRef = _firestore.collection('tasks');
+  final List<Task> _tasks = [
+    Task(id: '1', title: 'Buy flip flops', isCompleted: false, category: 'Personal', dueDate: DateTime.now().subtract(const Duration(days: 1)), priority: 'High'),
+    Task(id: '2', title: 'Design review', isCompleted: false, category: 'Work', dueDate: DateTime.now(), priority: 'High'),
+    Task(id: '3', title: 'Gym session', isCompleted: false, category: 'Personal', dueDate: DateTime.now(), priority: 'Low'),
+    Task(id: '4', title: 'Submit report', isCompleted: true, category: 'Work', dueDate: DateTime.now().subtract(const Duration(days: 2)), priority: 'Medium'),
+  ];
+  final _controller = StreamController<List<Task>>.broadcast();
 
-  Stream<List<Task>> getTasks() {
-    return _tasksRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+  TaskRepository() {
+    Future.microtask(() {
+      _controller.add(List.unmodifiable(_tasks));
     });
   }
 
-  Future<void> addTask(Task task) {
-    return _tasksRef.add(task.toFirestore());
+  Stream<List<Task>> getTasks() {
+    return _controller.stream;
   }
 
-  Future<void> updateTask(Task task) {
-    return _tasksRef.doc(task.id).update(task.toFirestore());
+  Future<void> addTask(Task task) async {
+    _tasks.add(task);
+    _controller.add(List.unmodifiable(_tasks));
   }
 
-  Future<void> deleteTask(String id) {
-    return _tasksRef.doc(id).delete();
+  Future<void> updateTask(Task task) async {
+    final index = _tasks.indexWhere((t) => t.id == task.id);
+    if (index != -1) {
+      _tasks[index] = task;
+      _controller.add(List.unmodifiable(_tasks));
+    }
+  }
+
+  Future<void> deleteTask(String id) async {
+    _tasks.removeWhere((t) => t.id == id);
+    _controller.add(List.unmodifiable(_tasks));
   }
 }

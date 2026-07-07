@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/root_screen.dart';
 import 'providers/theme_provider.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,15 +38,10 @@ class TaskFlowApp extends ConsumerWidget {
     return MaterialApp(
       title: 'TaskFlow Productivity Suite',
       themeMode: themeMode,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD), brightness: Brightness.light),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3525CD), brightness: Brightness.dark),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       home: const RootScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

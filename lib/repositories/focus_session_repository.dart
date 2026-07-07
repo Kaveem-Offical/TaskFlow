@@ -1,17 +1,25 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import '../models/focus_session_model.dart';
 
 class FocusSessionRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late final CollectionReference _sessionsRef = _firestore.collection('focus_sessions');
+  final List<FocusSession> _sessions = [];
+  final _controller = StreamController<List<FocusSession>>.broadcast();
 
-  Stream<List<FocusSession>> getFocusSessions() {
-    return _sessionsRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => FocusSession.fromFirestore(doc)).toList();
-    });
+  FocusSessionRepository() {
+    Future.microtask(() => _controller.add(List.unmodifiable(_sessions)));
   }
 
-  Future<void> addFocusSession(FocusSession session) {
-    return _sessionsRef.add(session.toFirestore());
+  Stream<List<FocusSession>> getFocusSessions() {
+    return _controller.stream;
+  }
+
+  Future<void> addFocusSession(FocusSession session) async {
+    _sessions.add(session);
+    _controller.add(List.unmodifiable(_sessions));
+  }
+
+  Future<void> deleteFocusSession(String id) async {
+    _sessions.removeWhere((s) => s.id == id);
+    _controller.add(List.unmodifiable(_sessions));
   }
 }
