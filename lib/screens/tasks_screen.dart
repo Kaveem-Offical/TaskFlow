@@ -58,11 +58,23 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   } else if (_selectedTab != 'All') {
                     filtered = tasks.where((t) => t.category == _selectedTab).toList();
                   }
-
-                  final overdue = tasks.where((t) => 
-                      !t.isCompleted && 
-                      t.dueDate != null && 
-                      t.dueDate!.isBefore(DateTime(now.year, now.month, now.day))).toList();
+                  final overdue = tasks.where((t) {
+                    if (t.isCompleted) return false;
+                    if (t.dueDate == null) return false;
+                    
+                    final dueDay = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
+                    final today = DateTime(now.year, now.month, now.day);
+                    
+                    if (dueDay.isBefore(today)) {
+                      return true;
+                    } else if (dueDay.isAtSameMomentAs(today)) {
+                      final targetTime = t.endTime ?? t.startTime;
+                      if (targetTime != null && targetTime.isBefore(now)) {
+                        return true;
+                      }
+                    }
+                    return false;
+                  }).toList();
 
                   final active = filtered.where((t) => !t.isCompleted && !overdue.contains(t)).toList();
                   final completed = filtered.where((t) => t.isCompleted).toList();
@@ -111,8 +123,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           ],
         ),
       ),
-      floatingActionButton: isDesktop ? null : _buildMobileFAB(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
       bottomSheet: isDesktop ? _buildDesktopQuickAdd() : null,
     );
   }
@@ -143,7 +154,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 SizedBox(width: 4),
                 Text(
                   '$title ($count)'.toUpperCase(),
-                  style: GoogleFonts.jetBrainsMono(
+                  style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -273,7 +284,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             children: [
               Text(
                 'TODAY, ${DateFormat('MMM d').format(DateTime.now()).toUpperCase()}',
-                style: GoogleFonts.jetBrainsMono(
+                style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
@@ -324,7 +335,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 ),
                 child: Text(
                   tab,
-                  style: GoogleFonts.jetBrainsMono(
+                  style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -341,8 +352,24 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   Widget _buildTaskCard(Task task, {bool isOverdue = false}) {
     return GestureDetector(
       onTap: () => showTaskModal(context, ref, task),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 8),
+      child: Dismissible(
+        key: Key(task.id),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          margin: EdgeInsets.only(bottom: 8),
+          alignment: Alignment.centerRight,
+          padding: EdgeInsets.only(right: 20.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.error,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
+        ),
+        onDismissed: (direction) {
+          ref.read(taskRepositoryProvider).deleteTask(task.id);
+        },
+        child: Container(
+          margin: EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(8),
@@ -408,7 +435,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                 ),
                                 child: Text(task.title),
                               ),
-                              SizedBox(height: 4),
+                              if (task.description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  task.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 4),
                               SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: Row(
@@ -429,7 +469,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                           SizedBox(width: 2),
                                           Text(
                                             '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)}',
-                                            style: GoogleFonts.jetBrainsMono(
+                                            style: GoogleFonts.inter(
                                               fontSize: 10,
                                               color: Theme.of(context).colorScheme.primary,
                                               fontWeight: FontWeight.w500,
@@ -444,7 +484,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                           SizedBox(width: 2),
                                           Text(
                                             DateFormat('MMM d').format(task.dueDate!),
-                                            style: GoogleFonts.jetBrainsMono(
+                                            style: GoogleFonts.inter(
                                               fontSize: 10,
                                               color: isOverdue ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
                                               fontWeight: FontWeight.w500,
@@ -483,6 +523,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -495,7 +536,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       ),
       child: Text(
         text,
-        style: GoogleFonts.jetBrainsMono(
+        style: GoogleFonts.inter(
           fontSize: 10,
           color: textColor,
           fontWeight: FontWeight.w500,
@@ -507,6 +548,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
 void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
   String title = existingTask?.title ?? '';
+  String description = existingTask?.description ?? '';
     String category = existingTask?.category ?? 'Work';
     String priority = existingTask?.priority ?? 'Medium';
     
@@ -523,12 +565,12 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final availableCategories = ref.watch(categoriesProvider);
-
+ 
             // Ensure selected category is valid
             if (!availableCategories.contains(category) && availableCategories.isNotEmpty) {
               category = availableCategories.first;
             }
-
+ 
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -554,6 +596,19 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
                       ),
                       onChanged: (val) => title = val,
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      initialValue: description,
+                      maxLines: 3,
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        labelStyle: TextStyle(color: Theme.of(context).colorScheme.outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
+                      ),
+                      onChanged: (val) => description = val,
                     ),
                     SizedBox(height: 24),
                     Text('Category', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
@@ -712,6 +767,7 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                           final task = Task(
                             id: existingTask?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
                             title: title,
+                            description: description,
                             isCompleted: existingTask?.isCompleted ?? false,
                             category: category,
                             priority: priority,
@@ -736,6 +792,20 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                       ),
                       child: Text(existingTask == null ? 'Add Task' : 'Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
+                    if (existingTask != null) ...[
+                      SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () {
+                          ref.read(taskRepositoryProvider).deleteTask(existingTask.id);
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          minimumSize: const Size.fromHeight(56),
+                        ),
+                        child: Text('Delete Task', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                     SizedBox(height: 32),
                   ],
                 ),
