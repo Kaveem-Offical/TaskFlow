@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class WeeklyStripCalendar extends StatefulWidget {
   final DateTime selectedDay;
@@ -46,33 +49,32 @@ class _WeeklyStripCalendarState extends State<WeeklyStripCalendar> {
       final daysInMonth = DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
       final index = widget.selectedDay.day - 1;
       
-      // Try to center the selected day
       double screenWidth = MediaQuery.of(context).size.width;
       double targetOffset = (index * _itemWidth) - (screenWidth / 2) + (_itemWidth / 2);
-      targetOffset = targetOffset.clamp(0.0, (daysInMonth * _itemWidth) - screenWidth + 32.0); // 32.0 for padding
+      targetOffset = targetOffset.clamp(0.0, (daysInMonth * _itemWidth) - screenWidth + 32.0);
       
       if (targetOffset > 0) {
         _scrollController.animateTo(
           targetOffset,
           duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+          curve: Curves.easeOutQuart,
         );
       }
     }
   }
 
   void _previousMonth() {
+    HapticFeedback.lightImpact();
     setState(() {
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
-      // Select first day of previous month
       widget.onDaySelected(_currentMonth);
     });
   }
 
   void _nextMonth() {
+    HapticFeedback.lightImpact();
     setState(() {
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
-      // Select first day of next month
       widget.onDaySelected(_currentMonth);
     });
   }
@@ -86,6 +88,7 @@ class _WeeklyStripCalendarState extends State<WeeklyStripCalendar> {
   @override
   Widget build(BuildContext context) {
     int daysInMonth = DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
+    final theme = Theme.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -94,32 +97,31 @@ class _WeeklyStripCalendarState extends State<WeeklyStripCalendar> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: Icon(Icons.chevron_left, color: Theme.of(context).colorScheme.outlineVariant, size: 28),
-                onPressed: _previousMonth,
-              ),
-              const SizedBox(width: 24),
               Text(
                 DateFormat('MMMM yyyy').format(_currentMonth),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 24),
-              IconButton(
-                icon: Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.outlineVariant, size: 28),
-                onPressed: _nextMonth,
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ).animate(key: ValueKey(_currentMonth)).fadeIn().slideX(begin: 0.1, end: 0, curve: Curves.easeOutQuart),
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(LucideIcons.chevronLeft, color: theme.colorScheme.onSurfaceVariant),
+                    onPressed: _previousMonth,
+                  ),
+                  IconButton(
+                    icon: Icon(LucideIcons.chevronRight, color: theme.colorScheme.onSurfaceVariant),
+                    onPressed: _nextMonth,
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         // Days Strip
         SizedBox(
-          height: 90,
+          height: 80,
           child: ListView.builder(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -131,35 +133,37 @@ class _WeeklyStripCalendarState extends State<WeeklyStripCalendar> {
               
               return GestureDetector(
                 onTap: () => widget.onDaySelected(day),
-                child: Container(
-                  width: _itemWidth,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: _itemWidth - 8,
                   margin: const EdgeInsets.only(right: 8.0),
                   decoration: BoxDecoration(
-                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
+                    color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        DateFormat('E').format(day), // Mon, Tue, etc.
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                        DateFormat('E').format(day),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                           color: isSelected 
-                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8)
-                              : Theme.of(context).colorScheme.outline,
+                              ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         '${day.day}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
                           color: isSelected 
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Theme.of(context).colorScheme.onSurface,
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
                         ),
                       ),
                     ],

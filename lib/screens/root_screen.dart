@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/providers.dart';
 import '../models/focus_session_model.dart';
 import '../models/task_model.dart';
@@ -21,12 +24,12 @@ class RootScreen extends ConsumerStatefulWidget {
 
 class _RootScreenState extends ConsumerState<RootScreen> {
   final List<Widget> _screens = [
-    TasksScreen(),
-    CalendarScreen(),
-    FocusScreen(),
-    InsightsScreen(),
-    AnalyticsScreen(),
-    SettingsScreen(),
+    const TasksScreen(),
+    const CalendarScreen(),
+    const FocusScreen(),
+    const InsightsScreen(),
+    const AnalyticsScreen(),
+    const SettingsScreen(),
   ];
 
   List<Task> _latestTasks = [];
@@ -39,6 +42,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(navigationProvider);
+    final theme = Theme.of(context);
 
     // Listen to tasks + focus sessions and refresh widget whenever either changes
     ref.listen(tasksStreamProvider, (previous, next) {
@@ -57,54 +61,56 @@ class _RootScreenState extends ConsumerState<RootScreen> {
 
     return Scaffold(
       extendBody: true, // Needed for floating/glassmorphism navbar
-      body: AnimatedSwitcher(
-        duration: Duration(milliseconds: 250),
-        child: IndexedStack(
-          key: ValueKey<int>(currentIndex),
-          index: currentIndex,
-          children: _screens,
-        ),
-      ),
+      body: _screens[currentIndex]
+        .animate(key: ValueKey(currentIndex))
+        .fadeIn(duration: 300.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.05, end: 0, duration: 300.ms, curve: Curves.easeOutQuart),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showTaskModal(context, ref, null),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        shape: const CircleBorder(),
-        child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary, size: 28),
-      ),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(LucideIcons.plus, size: 28),
+      ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.elasticOut),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: BottomAppBar(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            height: 64,
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
-            shape: const CircularNotchedRectangle(),
-            notchMargin: 8.0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildNavItem(context, currentIndex, 0, Icons.check_circle_outline, Icons.check_circle, 'Tasks'),
-                      _buildNavItem(context, currentIndex, 1, Icons.calendar_month_outlined, Icons.calendar_month, 'Calendar'),
-                    ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.5), width: 0.5)),
+        ),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: BottomAppBar(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              color: theme.colorScheme.surface.withValues(alpha: 0.7),
+              elevation: 0,
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 12.0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildNavItem(context, currentIndex, 0, LucideIcons.checkCircle2, 'Tasks'),
+                        _buildNavItem(context, currentIndex, 1, LucideIcons.calendar, 'Calendar'),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 48), // Space for FAB
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildNavItem(context, currentIndex, 3, Icons.insights_outlined, Icons.insights, 'Insights'),
-                      _buildNavItem(context, currentIndex, 5, Icons.settings_outlined, Icons.settings, 'Settings'),
-                    ],
+                  const SizedBox(width: 64), // Space for FAB
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildNavItem(context, currentIndex, 3, LucideIcons.barChart3, 'Insights'),
+                        _buildNavItem(context, currentIndex, 5, LucideIcons.settings, 'Settings'),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -112,19 +118,38 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     );
   }
 
-  Widget _buildNavItem(BuildContext context, int currentIndex, int itemIndex, IconData icon, IconData activeIcon, String label) {
+  Widget _buildNavItem(BuildContext context, int currentIndex, int itemIndex, IconData icon, String label) {
     final isSelected = currentIndex == itemIndex;
-    return InkWell(
-      onTap: () => ref.read(navigationProvider.notifier).setIndex(itemIndex),
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    final theme = Theme.of(context);
+    
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        ref.read(navigationProvider.notifier).setIndex(itemIndex);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isSelected ? activeIcon : icon,
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+              icon,
+              size: 24,
+              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+            )
+            .animate(target: isSelected ? 1 : 0)
+            .scaleXY(begin: 1.0, end: 1.1, duration: 150.ms, curve: Curves.easeOutBack)
+            .tint(color: theme.colorScheme.primary, duration: 150.ms),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

@@ -10,6 +10,11 @@ class Task {
   final DateTime? dueDate;
   final DateTime? startTime;
   final DateTime? endTime;
+  
+  // Recurrence properties
+  final String? repeatMode; // 'Daily', 'Weekly', 'Monthly', 'None'
+  final DateTime? repeatEndDate;
+  final String? parentTaskId;
 
   Task({
     required this.id,
@@ -21,6 +26,9 @@ class Task {
     this.dueDate,
     this.startTime,
     this.endTime,
+    this.repeatMode,
+    this.repeatEndDate,
+    this.parentTaskId,
   });
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
@@ -35,6 +43,9 @@ class Task {
       dueDate: data['dueDate'] != null ? (data['dueDate'] as Timestamp).toDate() : null,
       startTime: data['startTime'] != null ? (data['startTime'] as Timestamp).toDate() : null,
       endTime: data['endTime'] != null ? (data['endTime'] as Timestamp).toDate() : null,
+      repeatMode: data['repeatMode'],
+      repeatEndDate: data['repeatEndDate'] != null ? (data['repeatEndDate'] as Timestamp).toDate() : null,
+      parentTaskId: data['parentTaskId'],
     );
   }
 
@@ -48,6 +59,9 @@ class Task {
       if (dueDate != null) 'dueDate': Timestamp.fromDate(dueDate!),
       if (startTime != null) 'startTime': Timestamp.fromDate(startTime!),
       if (endTime != null) 'endTime': Timestamp.fromDate(endTime!),
+      if (repeatMode != null) 'repeatMode': repeatMode,
+      if (repeatEndDate != null) 'repeatEndDate': Timestamp.fromDate(repeatEndDate!),
+      if (parentTaskId != null) 'parentTaskId': parentTaskId,
     };
   }
   
@@ -60,6 +74,9 @@ class Task {
     DateTime? dueDate,
     DateTime? startTime,
     DateTime? endTime,
+    String? repeatMode,
+    DateTime? repeatEndDate,
+    String? parentTaskId,
   }) {
     return Task(
       id: id,
@@ -71,6 +88,9 @@ class Task {
       dueDate: dueDate ?? this.dueDate,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
+      repeatMode: repeatMode ?? this.repeatMode,
+      repeatEndDate: repeatEndDate ?? this.repeatEndDate,
+      parentTaskId: parentTaskId ?? this.parentTaskId,
     );
   }
 }

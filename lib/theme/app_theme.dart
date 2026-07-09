@@ -2,120 +2,110 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Light Mode Base Colors
-  static const Color primary = Color(0xFF3525cd);
-  static const Color onPrimary = Color(0xFFffffff);
-  static const Color primaryContainer = Color(0xFF4f46e5);
-  static const Color onPrimaryContainer = Color(0xFFdad7ff);
-  
-  static const Color secondary = Color(0xFF6b38d4);
-  static const Color onSecondary = Color(0xFFffffff);
-  static const Color secondaryContainer = Color(0xFF8455ef);
-  static const Color onSecondaryContainer = Color(0xFFfffbff);
-  
-  static const Color tertiary = Color(0xFF005338);
-  static const Color onTertiary = Color(0xFFffffff);
-  static const Color tertiaryContainer = Color(0xFF006e4b);
-  static const Color onTertiaryContainer = Color(0xFF67f4b7);
-  
-  static const Color error = Color(0xFFba1a1a);
-  static const Color onError = Color(0xFFffffff);
-  static const Color errorContainer = Color(0xFFffdad6);
-  static const Color onErrorContainer = Color(0xFF93000a);
-  
-  static const Color background = Color(0xFFf9f9ff);
-  static const Color onBackground = Color(0xFF151c27);
-  
-  static const Color surface = Color(0xFFf9f9ff);
-  static const Color onSurface = Color(0xFF151c27);
-  static const Color surfaceVariant = Color(0xFFdce2f3);
-  static const Color onSurfaceVariant = Color(0xFF464555);
-  
-  static const Color outline = Color(0xFF5A5869); 
-  static const Color outlineVariant = Color(0xFFB0ADC0); 
-  
-  static const Color surfaceContainerHighest = Color(0xFFdce2f3);
-  static const Color surfaceContainerHigh = Color(0xFFe2e8f8);
-  static const Color surfaceContainer = Color(0xFFe7eefe);
-  static const Color surfaceContainerLow = Color(0xFFf0f3ff);
-  static const Color surfaceContainerLowest = Color(0xFFffffff);
+  // Premium Modern Monochrome + Vibrant Accent Palette
+  static const Color accentLight = Color(0xFF5E6AD2); // Elegant Purple/Blue
+  static const Color accentDark = Color(0xFF6B79ED);
 
-  // Dark Mode Base Colors (Rich Stitch dark theme)
-  static const Color _darkPrimary = Color(0xFFa4a2ff);
-  static const Color _darkOnPrimary = Color(0xFF0a006c);
-  static const Color _darkPrimaryContainer = Color(0xFF3525cd);
-  static const Color _darkOnPrimaryContainer = Color(0xFFdad7ff);
-  
-  static const Color _darkSecondary = Color(0xFFcbb0ff);
-  static const Color _darkOnSecondary = Color(0xFF3b0091);
-  static const Color _darkSecondaryContainer = Color(0xFF531bc0);
-  static const Color _darkOnSecondaryContainer = Color(0xFFebdcff);
-  
-  static const Color _darkTertiary = Color(0xFF47d79c);
-  static const Color _darkOnTertiary = Color(0xFF003824);
-  static const Color _darkTertiaryContainer = Color(0xFF005338);
-  static const Color _darkOnTertiaryContainer = Color(0xFF67f4b7);
-  
-  static const Color _darkError = Color(0xFFffb4ab);
-  static const Color _darkOnError = Color(0xFF690005);
-  static const Color _darkErrorContainer = Color(0xFF93000a);
-  static const Color _darkOnErrorContainer = Color(0xFFffdad6);
-  
-  static const Color _darkBackground = Color(0xFF151c27);
-  static const Color _darkOnBackground = Color(0xFFe0e2e9);
-  
-  static const Color _darkSurface = Color(0xFF151c27);
-  static const Color _darkOnSurface = Color(0xFFe0e2e9);
-  static const Color _darkSurfaceVariant = Color(0xFF464555);
-  static const Color _darkOnSurfaceVariant = Color(0xFFc7c4d8);
-  
-  static const Color _darkOutline = Color(0xFF918f9e);
-  static const Color _darkOutlineVariant = Color(0xFF464555);
+  // Light Mode Colors
+  static const Color _lightBackground = Color(0xFFF9FAFB);
+  static const Color _lightSurface = Color(0xFFFFFFFF);
+  static const Color _lightSurfaceVariant = Color(0xFFF3F4F6);
+  static const Color _lightTextPrimary = Color(0xFF111827);
+  static const Color _lightTextSecondary = Color(0xFF6B7280);
+  static const Color _lightBorder = Color(0xFFE5E7EB);
+  static const Color _lightError = Color(0xFFEF4444);
 
-  static const Color _darkSurfaceContainerHighest = Color(0xFF333541);
-  static const Color _darkSurfaceContainerHigh = Color(0xFF282a35);
-  static const Color _darkSurfaceContainer = Color(0xFF1e2029);
-  static const Color _darkSurfaceContainerLow = Color(0xFF181921);
-  static const Color _darkSurfaceContainerLowest = Color(0xFF0d0f15);
+  // Dark Mode Colors
+  static const Color _darkBackground = Color(0xFF111111);
+  static const Color _darkSurface = Color(0xFF1C1C1C);
+  static const Color _darkSurfaceVariant = Color(0xFF262626);
+  static const Color _darkTextPrimary = Color(0xFFF9FAFB);
+  static const Color _darkTextSecondary = Color(0xFFA1A1AA);
+  static const Color _darkBorder = Color(0xFF27272A);
+  static const Color _darkError = Color(0xFFF87171);
+
+  static TextTheme _buildTextTheme(TextTheme base) {
+    return GoogleFonts.interTextTheme(base).copyWith(
+      displayLarge: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: -1.0, fontSize: 32),
+      displayMedium: GoogleFonts.inter(fontWeight: FontWeight.w700, letterSpacing: -0.5, fontSize: 24),
+      displaySmall: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: -0.5, fontSize: 20),
+      headlineMedium: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: -0.5, fontSize: 18),
+      headlineSmall: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: -0.2, fontSize: 16),
+      titleLarge: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: -0.2, fontSize: 14),
+      titleMedium: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: 0, fontSize: 14),
+      titleSmall: GoogleFonts.inter(fontWeight: FontWeight.w500, letterSpacing: 0, fontSize: 12),
+      bodyLarge: GoogleFonts.inter(fontWeight: FontWeight.w400, letterSpacing: 0, fontSize: 16),
+      bodyMedium: GoogleFonts.inter(fontWeight: FontWeight.w400, letterSpacing: 0, fontSize: 14),
+      bodySmall: GoogleFonts.inter(fontWeight: FontWeight.w400, letterSpacing: 0, fontSize: 12),
+      labelLarge: GoogleFonts.inter(fontWeight: FontWeight.w600, letterSpacing: 0, fontSize: 14), // Buttons
+    );
+  }
 
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: const ColorScheme(
-        brightness: Brightness.light,
-        primary: primary,
-        onPrimary: onPrimary,
-        primaryContainer: primaryContainer,
-        onPrimaryContainer: onPrimaryContainer,
-        secondary: secondary,
-        onSecondary: onSecondary,
-        secondaryContainer: secondaryContainer,
-        onSecondaryContainer: onSecondaryContainer,
-        tertiary: tertiary,
-        onTertiary: onTertiary,
-        tertiaryContainer: tertiaryContainer,
-        onTertiaryContainer: onTertiaryContainer,
-        error: error,
-        onError: onError,
-        errorContainer: errorContainer,
-        onErrorContainer: onErrorContainer,
-        surface: surface,
-        onSurface: onSurface,
-        surfaceContainerHighest: surfaceContainerHighest,
-        surfaceContainerHigh: surfaceContainerHigh,
-        surfaceContainer: surfaceContainer,
-        surfaceContainerLow: surfaceContainerLow,
-        surfaceContainerLowest: surfaceContainerLowest,
-        onSurfaceVariant: onSurfaceVariant,
-        outline: outline,
-        outlineVariant: outlineVariant,
+      brightness: Brightness.light,
+      colorScheme: const ColorScheme.light(
+        primary: accentLight,
+        onPrimary: Colors.white,
+        secondary: _lightSurfaceVariant,
+        onSecondary: _lightTextPrimary,
+        surface: _lightSurface,
+        onSurface: _lightTextPrimary,
+        error: _lightError,
+        onError: Colors.white,
+        outline: _lightBorder,
+        outlineVariant: _lightBorder,
+        surfaceContainerHighest: _lightSurfaceVariant,
       ),
-      scaffoldBackgroundColor: background,
-      textTheme: GoogleFonts.interTextTheme(),
+      scaffoldBackgroundColor: _lightBackground,
+      textTheme: _buildTextTheme(ThemeData.light().textTheme).apply(
+        bodyColor: _lightTextPrimary,
+        displayColor: _lightTextPrimary,
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: surface,
-        foregroundColor: onSurface,
+        backgroundColor: _lightBackground,
+        foregroundColor: _lightTextPrimary,
         elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+      ),
+      cardTheme: const CardThemeData(
+        color: _lightSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: _lightBorder, width: 1),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: _lightSurface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _lightBorder, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _lightBorder, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: accentLight, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _lightError, width: 1),
+        ),
+        labelStyle: const TextStyle(color: _lightTextSecondary),
+        hintStyle: const TextStyle(color: _lightTextSecondary),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: _lightBorder,
+        thickness: 1,
+        space: 1,
       ),
     );
   }
@@ -123,41 +113,68 @@ class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: const ColorScheme(
-        brightness: Brightness.dark,
-        primary: _darkPrimary,
-        onPrimary: _darkOnPrimary,
-        primaryContainer: _darkPrimaryContainer,
-        onPrimaryContainer: _darkOnPrimaryContainer,
-        secondary: _darkSecondary,
-        onSecondary: _darkOnSecondary,
-        secondaryContainer: _darkSecondaryContainer,
-        onSecondaryContainer: _darkOnSecondaryContainer,
-        tertiary: _darkTertiary,
-        onTertiary: _darkOnTertiary,
-        tertiaryContainer: _darkTertiaryContainer,
-        onTertiaryContainer: _darkOnTertiaryContainer,
-        error: _darkError,
-        onError: _darkOnError,
-        errorContainer: _darkErrorContainer,
-        onErrorContainer: _darkOnErrorContainer,
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: accentDark,
+        onPrimary: Colors.white,
+        secondary: _darkSurfaceVariant,
+        onSecondary: _darkTextPrimary,
         surface: _darkSurface,
-        onSurface: _darkOnSurface,
-        surfaceContainerHighest: _darkSurfaceContainerHighest,
-        surfaceContainerHigh: _darkSurfaceContainerHigh,
-        surfaceContainer: _darkSurfaceContainer,
-        surfaceContainerLow: _darkSurfaceContainerLow,
-        surfaceContainerLowest: _darkSurfaceContainerLowest,
-        onSurfaceVariant: _darkOnSurfaceVariant,
-        outline: _darkOutline,
-        outlineVariant: _darkOutlineVariant,
+        onSurface: _darkTextPrimary,
+        error: _darkError,
+        onError: Colors.white,
+        outline: _darkBorder,
+        outlineVariant: _darkBorder,
+        surfaceContainerHighest: _darkSurfaceVariant,
       ),
       scaffoldBackgroundColor: _darkBackground,
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+      textTheme: _buildTextTheme(ThemeData.dark().textTheme).apply(
+        bodyColor: _darkTextPrimary,
+        displayColor: _darkTextPrimary,
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: _darkSurface,
-        foregroundColor: _darkOnSurface,
+        backgroundColor: _darkBackground,
+        foregroundColor: _darkTextPrimary,
         elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+      ),
+      cardTheme: const CardThemeData(
+        color: _darkSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: _darkBorder, width: 1),
+        ),
+        margin: EdgeInsets.zero,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: _darkSurface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _darkBorder, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _darkBorder, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: accentDark, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _darkError, width: 1),
+        ),
+        labelStyle: const TextStyle(color: _darkTextSecondary),
+        hintStyle: const TextStyle(color: _darkTextSecondary),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: _darkBorder,
+        thickness: 1,
+        space: 1,
       ),
     );
   }

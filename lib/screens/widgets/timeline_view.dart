@@ -1,10 +1,9 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
 import '../../models/event_model.dart';
 
-class TimelineViewWidget extends StatelessWidget {
+class TimelineViewWidget extends StatefulWidget {
   final List<dynamic> items; // Tasks and Events
   final DateTime selectedDay;
   final Function(dynamic) onItemTap;
@@ -17,131 +16,58 @@ class TimelineViewWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    const double hourWidth = 100.0; // Slightly wider for better readability
-    const int startHour = 7;
-    const int endHour = 20; // 7 AM to 8 PM
-    final double totalWidth = (endHour - startHour + 1) * hourWidth;
-    const double laneHeight = 70.0;
-    
-    // Sort items by start time
-    final sortedItems = List.from(items)..sort((a, b) {
-      DateTime? timeA = _getStartTime(a);
-      DateTime? timeB = _getStartTime(b);
-      if (timeA == null && timeB == null) return 0;
-      if (timeA == null) return 1;
-      if (timeB == null) return -1;
-      return timeA.compareTo(timeB);
-    });
+  State<TimelineViewWidget> createState() => _TimelineViewWidgetState();
+}
 
-    // Calculate lanes
-    final List<List<dynamic>> lanes = [];
-    final Map<dynamic, int> itemLanes = {};
-    
-    for (var item in sortedItems) {
-      final startTime = _getStartTime(item);
-      if (startTime == null) continue;
-      
-      final endTime = _getEndTime(item) ?? startTime.add(const Duration(hours: 1));
-      
-      int assignedLane = -1;
-      for (int i = 0; i < lanes.length; i++) {
-        bool overlap = false;
-        for (var laneItem in lanes[i]) {
-          final laneItemStart = _getStartTime(laneItem)!;
-          final laneItemEnd = _getEndTime(laneItem) ?? laneItemStart.add(const Duration(hours: 1));
-          
-          if (startTime.isBefore(laneItemEnd) && endTime.isAfter(laneItemStart)) {
-            overlap = true;
-            break;
+class _TimelineViewWidgetState extends State<TimelineViewWidget> {
+  final ScrollController _scrollController = ScrollController();
+  final double hourHeight = 60.0;
+  final int startHour = 0;
+  final int endHour = 24;
+  final double timeColumnWidth = 60.0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (DateUtils.isSameDay(widget.selectedDay, DateTime.now())) {
+        final now = DateTime.now();
+        final offset = (now.hour * hourHeight) - (MediaQuery.of(context).size.height / 3);
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            offset.clamp(0, (endHour - startHour) * hourHeight),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      } else {
+        // Find earliest event and scroll to it
+        if (widget.items.isNotEmpty) {
+          final sorted = List.from(widget.items)..sort((a, b) {
+            final tA = _getStartTime(a) ?? DateTime.now();
+            final tB = _getStartTime(b) ?? DateTime.now();
+            return tA.compareTo(tB);
+          });
+          final firstTime = _getStartTime(sorted.first);
+          if (firstTime != null) {
+            final offset = (firstTime.hour * hourHeight) - 60;
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                offset.clamp(0.0, (endHour - startHour) * hourHeight),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeInOut,
+              );
+            }
           }
         }
-        if (!overlap) {
-          assignedLane = i;
-          break;
-        }
       }
-      
-      if (assignedLane == -1) {
-        assignedLane = lanes.length;
-        lanes.add([]);
-      }
-      
-      lanes[assignedLane].add(item);
-      itemLanes[item] = assignedLane;
-    }
+    });
+  }
 
-    final double totalHeight = 40.0 + (lanes.isEmpty ? laneHeight : lanes.length * laneHeight);
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: totalWidth,
-          height: totalHeight > MediaQuery.of(context).size.height ? totalHeight : MediaQuery.of(context).size.height,
-          child: Stack(
-            children: [
-              // Background Grid and Time Labels
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _GridPainter(
-                    startHour: startHour,
-                    endHour: endHour,
-                    hourWidth: hourWidth,
-                    lineColor: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
-                    textColor: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-              ),
-              
-              // Current Time Indicator (if selected day is today)
-              if (DateUtils.isSameDay(selectedDay, DateTime.now()))
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _CurrentTimePainter(
-                      startHour: startHour,
-                      hourWidth: hourWidth,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              
-              // Items
-              ...sortedItems.map((item) {
-                final startTime = _getStartTime(item);
-                if (startTime == null) return const SizedBox();
-                
-                final endTime = _getEndTime(item) ?? startTime.add(const Duration(hours: 1));
-                
-                // Calculate positions
-                double leftOffset = ((startTime.hour - startHour) + (startTime.minute / 60.0)) * hourWidth;
-                if (leftOffset < 0) leftOffset = 0;
-                
-                double durationHours = endTime.difference(startTime).inMinutes / 60.0;
-                if (durationHours <= 0) durationHours = 1.0; // Minimum 1 hour block visually
-                double width = durationHours * hourWidth;
-                
-                // Keep some padding between items
-                if (width > 4) width -= 4; 
-                
-                final lane = itemLanes[item] ?? 0;
-                final topOffset = 40.0 + (lane * laneHeight);
-
-                return Positioned(
-                  left: leftOffset + 2, // slight margin
-                  top: topOffset + 2, // slight margin
-                  child: GestureDetector(
-                    onTap: () => onItemTap(item),
-                    child: _buildItemCard(context, item, width, laneHeight - 4),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   DateTime? _getStartTime(dynamic item) {
@@ -156,31 +82,115 @@ class TimelineViewWidget extends StatelessWidget {
     return null;
   }
 
-  Widget _buildItemCard(BuildContext context, dynamic item, double width, double height) {
+  @override
+  Widget build(BuildContext context) {
+    final double totalHeight = (endHour - startHour) * hourHeight;
+    final theme = Theme.of(context);
+
+    // Calculate overlapping items to adjust widths
+    final sortedItems = List.from(widget.items)..sort((a, b) {
+      DateTime? timeA = _getStartTime(a);
+      DateTime? timeB = _getStartTime(b);
+      if (timeA == null && timeB == null) return 0;
+      if (timeA == null) return 1;
+      if (timeB == null) return -1;
+      return timeA.compareTo(timeB);
+    });
+
+    return SingleChildScrollView(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      child: SizedBox(
+        height: totalHeight,
+        child: Stack(
+          children: [
+            // Background grid
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _VerticalGridPainter(
+                  startHour: startHour,
+                  endHour: endHour,
+                  hourHeight: hourHeight,
+                  timeColumnWidth: timeColumnWidth,
+                  lineColor: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  textColor: theme.colorScheme.outline,
+                ),
+              ),
+            ),
+            
+            // Current Time Indicator
+            if (DateUtils.isSameDay(widget.selectedDay, DateTime.now()))
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _VerticalCurrentTimePainter(
+                    startHour: startHour,
+                    hourHeight: hourHeight,
+                    timeColumnWidth: timeColumnWidth,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+
+            // Events
+            ...sortedItems.map((item) {
+              final startTime = _getStartTime(item);
+              if (startTime == null) return const SizedBox();
+              
+              final endTime = _getEndTime(item) ?? startTime.add(const Duration(minutes: 45));
+              
+              double topOffset = ((startTime.hour - startHour) + (startTime.minute / 60.0)) * hourHeight;
+              if (topOffset < 0) topOffset = 0;
+              
+              double durationHours = endTime.difference(startTime).inMinutes / 60.0;
+              if (durationHours <= 0) durationHours = 0.5; // Min 30 mins visual height
+              double height = durationHours * hourHeight;
+              if (height > 4) height -= 4; // Padding
+
+              return Positioned(
+                top: topOffset,
+                left: timeColumnWidth + 8,
+                right: 16,
+                height: height,
+                child: GestureDetector(
+                  onTap: () => widget.onItemTap(item),
+                  child: _buildItemCard(context, item),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(BuildContext context, dynamic item) {
     final String title = item.title;
     final String subtitle = item is Task ? item.description : 'Event';
     final bool isTask = item is Task;
     final bool isCompleted = isTask ? item.isCompleted : false;
     
-    // Google Calendar style solid color blocks
-    Color bgColor = isTask 
-        ? (isCompleted ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.6) : const Color(0xFF0F9D58)) // Google Green for tasks
-        : Theme.of(context).colorScheme.primary;
+    final List<Color> palette = const [
+      Color(0xFF7986cb), Color(0xFF33b679), Color(0xFF3f51b5), 
+      Color(0xFF0b8043), Color(0xFF039be5), Color(0xFFd50000), 
+      Color(0xFF4285f4), Color(0xFFe67c73), Color(0xFF8e24aa), 
+      Color(0xFFf4511e), Color(0xFFb39ddb), Color(0xFFef6c00),
+    ];
+    
+    final int hash = item.id.hashCode;
+    final Color itemColor = palette[hash.abs() % palette.length];
+    Color bgColor = isTask && isCompleted 
+        ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)
+        : itemColor.withValues(alpha: 0.2);
+    Color fgColor = isTask && isCompleted
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : itemColor;
 
     return Container(
-      width: width,
-      height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: fgColor, width: 4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,39 +201,43 @@ class TimelineViewWidget extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               decoration: isCompleted ? TextDecoration.lineThrough : null,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          if (subtitle.isNotEmpty)
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 2),
             Text(
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 10,
-                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
+          ]
         ],
       ),
     );
   }
 }
 
-class _GridPainter extends CustomPainter {
+class _VerticalGridPainter extends CustomPainter {
   final int startHour;
   final int endHour;
-  final double hourWidth;
+  final double hourHeight;
+  final double timeColumnWidth;
   final Color lineColor;
   final Color textColor;
 
-  _GridPainter({
+  _VerticalGridPainter({
     required this.startHour,
     required this.endHour,
-    required this.hourWidth,
+    required this.hourHeight,
+    required this.timeColumnWidth,
     required this.lineColor,
     required this.textColor,
   });
@@ -232,34 +246,26 @@ class _GridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final linePaint = Paint()
       ..color = lineColor
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 0.5;
 
-    final textPainter = TextPainter(
-      textDirection: ui.TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
 
     for (int i = 0; i <= (endHour - startHour); i++) {
-      double x = i * hourWidth;
+      double y = i * hourHeight;
       
-      // Draw vertical dashed line
-      double dashHeight = 4.0;
-      double dashSpace = 4.0;
-      double startY = 30.0;
-      while (startY < size.height) {
-        canvas.drawLine(Offset(x, startY), Offset(x, startY + dashHeight), linePaint);
-        startY += dashHeight + dashSpace;
-      }
+      // Draw horizontal line
+      canvas.drawLine(Offset(timeColumnWidth, y), Offset(size.width, y), linePaint);
       
       // Draw time text
       int hour = startHour + i;
-      String timeText = '${hour.toString().padLeft(2, '0')}:00';
+      String timeText = hour == 0 ? '12 AM' : (hour < 12 ? '$hour AM' : (hour == 12 ? '12 PM' : '${hour - 12} PM'));
       
       textPainter.text = TextSpan(
         text: timeText,
-        style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w500),
+        style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w500),
       );
       textPainter.layout();
-      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), 10));
+      textPainter.paint(canvas, Offset(timeColumnWidth - textPainter.width - 12, y - (textPainter.height / 2)));
     }
   }
 
@@ -267,14 +273,16 @@ class _GridPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _CurrentTimePainter extends CustomPainter {
+class _VerticalCurrentTimePainter extends CustomPainter {
   final int startHour;
-  final double hourWidth;
+  final double hourHeight;
+  final double timeColumnWidth;
   final Color color;
 
-  _CurrentTimePainter({
+  _VerticalCurrentTimePainter({
     required this.startHour,
-    required this.hourWidth,
+    required this.hourHeight,
+    required this.timeColumnWidth,
     required this.color,
   });
 
@@ -283,19 +291,19 @@ class _CurrentTimePainter extends CustomPainter {
     final now = DateTime.now();
     if (now.hour < startHour) return;
 
-    double x = ((now.hour - startHour) + (now.minute / 60.0)) * hourWidth;
+    double y = ((now.hour - startHour) + (now.minute / 60.0)) * hourHeight;
 
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 1.5;
 
-    // Draw vertical line
-    canvas.drawLine(Offset(x, 30), Offset(x, size.height), paint);
+    // Draw horizontal line
+    canvas.drawLine(Offset(timeColumnWidth, y), Offset(size.width, y), paint);
     
-    // Draw dot at bottom
-    canvas.drawCircle(Offset(x, size.height - 10), 4, paint);
+    // Draw dot at start
+    canvas.drawCircle(Offset(timeColumnWidth, y), 4, paint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true; // Re-paint as time changes
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
