@@ -356,12 +356,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         key: Key(task.id),
         direction: DismissDirection.endToStart,
         background: Container(
-          margin: EdgeInsets.only(bottom: 8),
+          margin: EdgeInsets.only(bottom: 12),
           alignment: Alignment.centerRight,
           padding: EdgeInsets.only(right: 20.0),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.error,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
         ),
@@ -369,177 +369,173 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           ref.read(taskRepositoryProvider).deleteTask(task.id);
         },
         child: Container(
-          margin: EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x0C000000), 
-              blurRadius: 20,
-              offset: Offset(0, 4),
+          margin: EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isOverdue 
+                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.5) 
+                : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.2),
+              width: isOverdue ? 1.5 : 1.0,
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (isOverdue)
-                  Container(width: 4, color: Theme.of(context).colorScheme.error),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            ref.read(taskRepositoryProvider).updateTask(task.copyWith(isCompleted: !task.isCompleted));
-                          },
-                          child: AnimatedContainer(
-                            duration: Duration(milliseconds: 300),
-                            curve: Curves.easeOutCubic,
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: task.isCompleted ? Theme.of(context).colorScheme.tertiaryContainer : Theme.of(context).colorScheme.primary,
-                                width: 2,
-                              ),
-                              color: task.isCompleted ? Theme.of(context).colorScheme.tertiaryContainer : Colors.transparent,
-                            ),
-                            child: AnimatedOpacity(
-                              duration: Duration(milliseconds: 200),
-                              opacity: task.isCompleted ? 1.0 : 0.0,
-                              child: Icon(Icons.check, size: 16, color: Theme.of(context).colorScheme.onTertiary),
-                            ),
-                          ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03), 
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  ref.read(taskRepositoryProvider).updateTask(task.copyWith(isCompleted: !task.isCompleted));
+                },
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: task.isCompleted ? Theme.of(context).colorScheme.tertiaryContainer : Theme.of(context).colorScheme.outline,
+                      width: 2,
+                    ),
+                    color: task.isCompleted ? Theme.of(context).colorScheme.tertiaryContainer : Colors.transparent,
+                  ),
+                  child: AnimatedOpacity(
+                    duration: Duration(milliseconds: 200),
+                    opacity: task.isCompleted ? 1.0 : 0.0,
+                    child: Icon(Icons.check, size: 18, color: Theme.of(context).colorScheme.onTertiary),
+                  ),
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedDefaultTextStyle(
+                      duration: Duration(milliseconds: 200),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                        color: task.isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.onSurface,
+                      ),
+                      child: Text(task.title),
+                    ),
+                    if (task.description.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        task.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                          decoration: task.isCompleted ? TextDecoration.lineThrough : null,
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AnimatedDefaultTextStyle(
-                                duration: Duration(milliseconds: 200),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                                  color: task.isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.onSurface,
-                                ),
-                                child: Text(task.title),
-                              ),
-                              if (task.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (isOverdue && !task.isCompleted)
+                            _buildBadge('Overdue', Theme.of(context).colorScheme.onError, Theme.of(context).colorScheme.error),
+                          if (isOverdue && !task.isCompleted) SizedBox(width: 6),
+                          if (task.priority == 'High')
+                            _buildBadge('High Priority', Theme.of(context).colorScheme.error, Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.5)),
+                          if (task.priority == 'Medium')
+                            _buildBadge('Medium Priority', Theme.of(context).colorScheme.secondary, Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.2)),
+                          if (task.priority == 'Low')
+                            _buildBadge('Low Priority', Theme.of(context).colorScheme.tertiaryContainer, Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.1)),
+                          if (task.priority != 'None') SizedBox(width: 6),
+                          _buildBadge(task.category, Theme.of(context).colorScheme.onSurfaceVariant, Theme.of(context).colorScheme.surfaceContainerHigh),
+                          SizedBox(width: 6),
+                          if (task.startTime != null && task.endTime != null)
+                            Row(
+                              children: [
+                                Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.primary),
+                                SizedBox(width: 4),
                                 Text(
-                                  task.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                  '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)}',
                                   style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                                    decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                                    fontSize: 11,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 4),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    if (task.priority == 'High')
-                                      _buildBadge('High Priority', Theme.of(context).colorScheme.error, Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.5)),
-                                    if (task.priority == 'Medium')
-                                      _buildBadge('Medium Priority', Theme.of(context).colorScheme.secondary, Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.2)),
-                                    if (task.priority == 'Low')
-                                      _buildBadge('Low Priority', Theme.of(context).colorScheme.tertiaryContainer, Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.1)),
-                                    if (task.priority != 'None') SizedBox(width: 4),
-                                    _buildBadge(task.category, Theme.of(context).colorScheme.onSurfaceVariant, Theme.of(context).colorScheme.surfaceContainerHigh),
-                                    SizedBox(width: 4),
-                                    if (task.startTime != null && task.endTime != null)
-                                      Row(
-                                        children: [
-                                          Icon(Icons.schedule, size: 12, color: Theme.of(context).colorScheme.primary),
-                                          SizedBox(width: 2),
-                                          Text(
-                                            '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)}',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10,
-                                              color: Theme.of(context).colorScheme.primary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    else if (task.dueDate != null)
-                                      Row(
-                                        children: [
-                                          Icon(Icons.event, size: 12, color: isOverdue ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary),
-                                          SizedBox(width: 2),
-                                          Text(
-                                            DateFormat('MMM d').format(task.dueDate!),
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10,
-                                              color: isOverdue ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                  ],
+                            )
+                          else if (task.dueDate != null)
+                            Row(
+                              children: [
+                                Icon(Icons.event, size: 14, color: isOverdue ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary),
+                                SizedBox(width: 4),
+                                Text(
+                                  DateFormat('MMM d').format(task.dueDate!),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: isOverdue ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (!task.isCompleted)
-                          GestureDetector(
-                            onTap: () {
-                              ref.read(timerProvider.notifier).selectTask(task.id);
-                              ref.read(navigationProvider.notifier).setIndex(2); // Jump to Focus screen
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Theme.of(context).colorScheme.surfaceContainer,
-                              ),
-                              child: Icon(Icons.play_arrow, color: Theme.of(context).colorScheme.primary),
-                            ),
-                          ),
-                      ],
+                              ],
+                            )
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!task.isCompleted)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      ref.read(timerProvider.notifier).selectTask(task.id);
+                      ref.read(navigationProvider.notifier).setIndex(2); // Jump to Focus screen
+                    },
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      ),
+                      child: Icon(Icons.play_arrow, color: Theme.of(context).colorScheme.primary),
                     ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
-      ),
       ),
     );
   }
 
   Widget _buildBadge(String text, Color textColor, Color bgColor) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         text,
         style: GoogleFonts.inter(
-          fontSize: 10,
+          fontSize: 11,
           color: textColor,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

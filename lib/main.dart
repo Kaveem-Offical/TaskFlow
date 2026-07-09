@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/root_screen.dart';
 import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
+import 'services/widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await WidgetService.init();
   
   try {
     await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: 'dummy_api_key',
-        appId: '1:1234567890:web:abcdef123456',
-        messagingSenderId: '1234567890',
-        projectId: 'dummy-project',
-      ),
+      options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
     // Ignore initialization errors

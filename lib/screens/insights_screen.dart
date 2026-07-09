@@ -45,7 +45,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   children: [
                     _buildTopKPIs(sessions, context),
                     const SizedBox(height: 16),
-                    _buildFocusRecord(sessions, tasks, context),
+                    _buildFocusRecord(sessions, tasks, context, ref),
                     const SizedBox(height: 16),
                     _buildDetailsSection(sessions, tasks, context),
                     const SizedBox(height: 16),
@@ -203,7 +203,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     );
   }
 
-  Widget _buildFocusRecord(List<FocusSession> sessions, List<Task> tasks, BuildContext context) {
+  Widget _buildFocusRecord(List<FocusSession> sessions, List<Task> tasks, BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final sortedSessions = List<FocusSession>.from(sessions)..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     final recentSessions = sortedSessions.take(3).toList(); 
@@ -221,7 +221,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Focus Record', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
-              Icon(Icons.add, color: theme.colorScheme.primary, size: 20),
+              IconButton(
+                icon: Icon(Icons.add, color: theme.colorScheme.primary, size: 24),
+                onPressed: () => _showAddSessionDialog(context, ref, tasks),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -757,6 +762,69 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           );
         }).toList(),
       ),
+    );
+  }
+  void _showAddSessionDialog(BuildContext context, WidgetRef ref, List<Task> tasks) {
+    int durationMinutes = 25;
+    String? selectedTaskId;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Add Focus Session'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Duration (minutes)'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (val) {
+                      durationMinutes = int.tryParse(val) ?? 25;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Task (Optional)'),
+                    value: selectedTaskId,
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('No Task')),
+                      ...tasks.where((t) => !t.isCompleted).map((t) => DropdownMenuItem(
+                        value: t.id,
+                        child: Text(t.title, overflow: TextOverflow.ellipsis),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() => selectedTaskId = val);
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.read(focusSessionRepositoryProvider).addFocusSession(FocusSession(
+                      id: '',
+                      durationMinutes: durationMinutes,
+                      timestamp: DateTime.now(),
+                      linkedTaskId: selectedTaskId,
+                    ));
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Add'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/providers.dart';
 import '../models/task_model.dart';
 import '../models/focus_session_model.dart';
+import 'widgets/productivity_chart_widget.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
   const AnalyticsScreen({super.key});
@@ -56,6 +57,13 @@ class AnalyticsScreen extends ConsumerWidget {
                     Text('Focus Streak', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     SizedBox(height: 16),
                     _buildStreakWidget(sessions),
+                    SizedBox(height: 32),
+                    Text('Productivity Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 16),
+                    AspectRatio(
+                      aspectRatio: 2.0, // 4x2 format
+                      child: ProductivityChartWidget(),
+                    ),
                   ],
                 ),
               );
@@ -112,7 +120,7 @@ class AnalyticsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Current Streak', style: TextStyle(color: Colors.grey)),
-                Text('$streak Days', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Geist')),
+                Text('$streak Days', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
             Icon(Icons.local_fire_department, color: Colors.orange.shade400, size: 48),

@@ -1,13 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _notificationsEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkNotificationStatus();
+  }
+
+  Future<void> _checkNotificationStatus() async {
+    final status = await Permission.notification.status;
+    setState(() {
+      _notificationsEnabled = status.isGranted;
+    });
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    if (value) {
+      final status = await Permission.notification.request();
+      if (status.isGranted) {
+        setState(() => _notificationsEnabled = true);
+      } else if (status.isPermanentlyDenied) {
+        // Direct the user to app settings
+        openAppSettings();
+      } else {
+        setState(() => _notificationsEnabled = false);
+      }
+    } else {
+      // In iOS/Android you can't easily "un-request" permissions programmatically
+      // Usually you just direct them to settings if they want to turn it off completely.
+      openAppSettings();
+      // Alternatively just keep the local toggle state and don't schedule notifications.
+      setState(() => _notificationsEnabled = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
     final themeNotifier = ref.read(themeProvider.notifier);
     final user = ref.watch(authProvider);
@@ -60,9 +101,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           SwitchListTile(
             title: Text('Push Notifications'),
-            value: true,
-            onChanged: (val) {
-            },
+            value: _notificationsEnabled,
+            onChanged: _toggleNotifications,
             activeThumbColor: Theme.of(context).colorScheme.primary,
           ),
           Divider(),

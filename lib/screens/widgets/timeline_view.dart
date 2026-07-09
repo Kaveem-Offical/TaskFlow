@@ -18,10 +18,11 @@ class TimelineViewWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double hourWidth = 80.0;
+    const double hourWidth = 100.0; // Slightly wider for better readability
     const int startHour = 7;
     const int endHour = 20; // 7 AM to 8 PM
     final double totalWidth = (endHour - startHour + 1) * hourWidth;
+    const double laneHeight = 70.0;
     
     // Sort items by start time
     final sortedItems = List.from(items)..sort((a, b) {
@@ -33,83 +34,111 @@ class TimelineViewWidget extends StatelessWidget {
       return timeA.compareTo(timeB);
     });
 
+    // Calculate lanes
+    final List<List<dynamic>> lanes = [];
+    final Map<dynamic, int> itemLanes = {};
+    
+    for (var item in sortedItems) {
+      final startTime = _getStartTime(item);
+      if (startTime == null) continue;
+      
+      final endTime = _getEndTime(item) ?? startTime.add(const Duration(hours: 1));
+      
+      int assignedLane = -1;
+      for (int i = 0; i < lanes.length; i++) {
+        bool overlap = false;
+        for (var laneItem in lanes[i]) {
+          final laneItemStart = _getStartTime(laneItem)!;
+          final laneItemEnd = _getEndTime(laneItem) ?? laneItemStart.add(const Duration(hours: 1));
+          
+          if (startTime.isBefore(laneItemEnd) && endTime.isAfter(laneItemStart)) {
+            overlap = true;
+            break;
+          }
+        }
+        if (!overlap) {
+          assignedLane = i;
+          break;
+        }
+      }
+      
+      if (assignedLane == -1) {
+        assignedLane = lanes.length;
+        lanes.add([]);
+      }
+      
+      lanes[assignedLane].add(item);
+      itemLanes[item] = assignedLane;
+    }
+
+    final double totalHeight = 40.0 + (lanes.isEmpty ? laneHeight : lanes.length * laneHeight);
+
     return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: totalWidth,
-        child: Stack(
-          children: [
-            // Background Grid and Time Labels
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _GridPainter(
-                  startHour: startHour,
-                  endHour: endHour,
-                  hourWidth: hourWidth,
-                  lineColor: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
-                  textColor: Theme.of(context).colorScheme.outline,
-                ),
-              ),
-            ),
-            
-            // Current Time Indicator (if selected day is today)
-            if (DateUtils.isSameDay(selectedDay, DateTime.now()))
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: totalWidth,
+          height: totalHeight > MediaQuery.of(context).size.height ? totalHeight : MediaQuery.of(context).size.height,
+          child: Stack(
+            children: [
+              // Background Grid and Time Labels
               Positioned.fill(
                 child: CustomPaint(
-                  painter: _CurrentTimePainter(
+                  painter: _GridPainter(
                     startHour: startHour,
+                    endHour: endHour,
                     hourWidth: hourWidth,
-                    color: Theme.of(context).colorScheme.primary,
+                    lineColor: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    textColor: Theme.of(context).colorScheme.outline,
                   ),
                 ),
               ),
-            
-            // Items
-            Padding(
-              padding: const EdgeInsets.only(top: 40.0), // Space for time labels
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: sortedItems.length,
-                itemBuilder: (context, index) {
-                  final item = sortedItems[index];
-                  final startTime = _getStartTime(item);
-                  if (startTime == null) return const SizedBox();
-                  
-                  final endTime = _getEndTime(item) ?? startTime.add(const Duration(hours: 1));
-                  
-                  // Calculate positions
-                  double leftOffset = ((startTime.hour - startHour) + (startTime.minute / 60.0)) * hourWidth;
-                  if (leftOffset < 0) leftOffset = 0;
-                  
-                  double durationHours = endTime.difference(startTime).inMinutes / 60.0;
-                  if (durationHours <= 0) durationHours = 1.0;
-                  double width = durationHours * hourWidth;
-                  
-                  // Ensure minimum width for readability
-                  if (width < 120) width = 120;
-
-                  return Container(
-                    height: 80,
-                    margin: const EdgeInsets.only(bottom: 16.0),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Hatched duration background (optional, simple version uses just card)
-                        Positioned(
-                          left: leftOffset,
-                          child: GestureDetector(
-                            onTap: () => onItemTap(item),
-                            child: _buildItemCard(context, item, width),
-                          ),
-                        ),
-                      ],
+              
+              // Current Time Indicator (if selected day is today)
+              if (DateUtils.isSameDay(selectedDay, DateTime.now()))
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CurrentTimePainter(
+                      startHour: startHour,
+                      hourWidth: hourWidth,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              
+              // Items
+              ...sortedItems.map((item) {
+                final startTime = _getStartTime(item);
+                if (startTime == null) return const SizedBox();
+                
+                final endTime = _getEndTime(item) ?? startTime.add(const Duration(hours: 1));
+                
+                // Calculate positions
+                double leftOffset = ((startTime.hour - startHour) + (startTime.minute / 60.0)) * hourWidth;
+                if (leftOffset < 0) leftOffset = 0;
+                
+                double durationHours = endTime.difference(startTime).inMinutes / 60.0;
+                if (durationHours <= 0) durationHours = 1.0; // Minimum 1 hour block visually
+                double width = durationHours * hourWidth;
+                
+                // Keep some padding between items
+                if (width > 4) width -= 4; 
+                
+                final lane = itemLanes[item] ?? 0;
+                final topOffset = 40.0 + (lane * laneHeight);
+
+                return Positioned(
+                  left: leftOffset + 2, // slight margin
+                  top: topOffset + 2, // slight margin
+                  child: GestureDetector(
+                    onTap: () => onItemTap(item),
+                    child: _buildItemCard(context, item, width, laneHeight - 4),
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -127,81 +156,57 @@ class TimelineViewWidget extends StatelessWidget {
     return null;
   }
 
-  Widget _buildItemCard(BuildContext context, dynamic item, double width) {
+  Widget _buildItemCard(BuildContext context, dynamic item, double width, double height) {
     final String title = item.title;
     final String subtitle = item is Task ? item.description : 'Event';
     final bool isTask = item is Task;
     final bool isCompleted = isTask ? item.isCompleted : false;
     
-    // Choose color based on type or completion
-    Color stripColor = isTask 
-        ? (isCompleted ? Theme.of(context).colorScheme.outline : const Color(0xFF47d79c)) // Greenish for tasks
+    // Google Calendar style solid color blocks
+    Color bgColor = isTask 
+        ? (isCompleted ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.6) : const Color(0xFF0F9D58)) // Google Green for tasks
         : Theme.of(context).colorScheme.primary;
 
     return Container(
       width: width,
-      height: 64,
+      height: height,
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
-        ),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Container(
-            width: 4,
-            decoration: BoxDecoration(
-              color: stripColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                bottomLeft: Radius.circular(8),
-              ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              decoration: isCompleted ? TextDecoration.lineThrough : null,
+              color: Colors.white,
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      decoration: isCompleted ? TextDecoration.lineThrough : null,
-                      color: isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  if (subtitle.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                ],
+          if (subtitle.isNotEmpty)
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.white.withValues(alpha: 0.9),
               ),
             ),
-          ),
         ],
       ),
     );

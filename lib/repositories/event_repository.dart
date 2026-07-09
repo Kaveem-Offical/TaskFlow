@@ -1,33 +1,27 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/event_model.dart';
 
 class EventRepository {
-  final List<Event> _events = [];
-  final _controller = StreamController<List<Event>>.broadcast();
+  final CollectionReference _eventsCollection = FirebaseFirestore.instance.collection('events');
 
-  EventRepository() {
-    Future.microtask(() => _controller.add(List.unmodifiable(_events)));
-  }
+  EventRepository();
 
   Stream<List<Event>> getEvents() {
-    return _controller.stream;
+    return _eventsCollection.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Event.fromFirestore(doc)).toList();
+    });
   }
 
   Future<void> addEvent(Event event) async {
-    _events.add(event);
-    _controller.add(List.unmodifiable(_events));
+    await _eventsCollection.doc(event.id).set(event.toFirestore());
   }
 
   Future<void> updateEvent(Event event) async {
-    final index = _events.indexWhere((e) => e.id == event.id);
-    if (index != -1) {
-      _events[index] = event;
-      _controller.add(List.unmodifiable(_events));
-    }
+    await _eventsCollection.doc(event.id).update(event.toFirestore());
   }
 
   Future<void> deleteEvent(String id) async {
-    _events.removeWhere((e) => e.id == id);
-    _controller.add(List.unmodifiable(_events));
+    await _eventsCollection.doc(id).delete();
   }
 }

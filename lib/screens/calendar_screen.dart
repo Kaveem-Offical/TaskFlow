@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'widgets/weekly_strip_calendar.dart';
+import 'widgets/timeline_view.dart';
 import '../providers/providers.dart';
 import '../models/task_model.dart';
 import '../models/event_model.dart';
@@ -30,16 +31,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     // Add tasks due or starting on this day
     dayItems.addAll(tasks.where((t) {
       if (t.startTime != null) {
-        return isSameDay(t.startTime, day);
+        return DateUtils.isSameDay(t.startTime, day);
       } else if (t.dueDate != null) {
-        return isSameDay(t.dueDate, day);
+        return DateUtils.isSameDay(t.dueDate, day);
       }
       return false;
     }));
 
     // Add events on this day
     dayItems.addAll(events.where((e) {
-      return isSameDay(e.startTime, day);
+      return DateUtils.isSameDay(e.startTime, day);
     }));
 
     // Sort items by time if available
@@ -63,7 +64,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Calendar', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        title: Text('Calendar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.primary),
+            onPressed: () => _showEventModal(context, ref, null),
+          ),
+          IconButton(
+            icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () {},
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: tasksAsync.when(
         data: (tasks) {
@@ -73,43 +86,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
               return Column(
                 children: [
-                  TableCalendar(
-                    firstDay: DateTime.utc(2020, 10, 16),
-                    lastDay: DateTime.utc(2030, 3, 14),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) {
-                      return isSameDay(_selectedDay, day);
+                  WeeklyStripCalendar(
+                    selectedDay: _selectedDay ?? _focusedDay,
+                    onDaySelected: (day) {
+                      setState(() {
+                        _selectedDay = day;
+                        _focusedDay = day;
+                      });
                     },
-                    onDaySelected: (selectedDay, focusedDay) {
-                      if (!isSameDay(_selectedDay, selectedDay)) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      }
-                    },
-                    eventLoader: (day) {
-                      return _getEventsForDay(day, tasks, events);
-                    },
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        shape: BoxShape.circle,
-                      ),
-                      selectedDecoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      markerDecoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
                   ),
-                  SizedBox(height: 8.0),
+                  const SizedBox(height: 24.0),
                   Expanded(
                     child: AnimatedSwitcher(
-                      duration: Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 300),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
                       child: selectedDayItems.isEmpty
@@ -119,23 +108,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.event_busy, size: 48, color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 16),
                                   Text('No events or tasks for this day.', style: TextStyle(color: Theme.of(context).colorScheme.outline)),
                                 ],
                               ),
                             )
-                          : ListView.builder(
-                              key: ValueKey('list_${_selectedDay?.toIso8601String()}'),
-                              padding: EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 160.0),
-                              itemCount: selectedDayItems.length,
-                              itemBuilder: (context, index) {
-                                final item = selectedDayItems[index];
+                          : TimelineViewWidget(
+                              key: ValueKey('timeline_${_selectedDay?.toIso8601String()}'),
+                              items: selectedDayItems,
+                              selectedDay: _selectedDay ?? _focusedDay,
+                              onItemTap: (item) {
                                 if (item is Task) {
-                                  return _buildTaskTile(item);
+                                  showTaskModal(context, ref, item);
                                 } else if (item is Event) {
-                                  return _buildEventTile(item);
+                                  _showEventModal(context, ref, item);
                                 }
-                                return SizedBox();
                               },
                             ),
                     ),
@@ -150,150 +137,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         loading: () => Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error loading tasks: $e')),
       ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 80.0),
-        child: FloatingActionButton(
-          onPressed: () => _showEventModal(context, ref, null),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
-        ),
-      ),
     );
   }
 
-  Widget _buildTaskTile(Task task) {
-    String subtitle = 'Task';
-    if (task.startTime != null && task.endTime != null) {
-      subtitle = '${DateFormat.jm().format(task.startTime!)} - ${DateFormat.jm().format(task.endTime!)}';
-    } else if (task.dueDate != null) {
-      subtitle = 'Due ${DateFormat('MMM d').format(task.dueDate!)}';
-    }
 
-    return GestureDetector(
-      onTap: () => showTaskModal(context, ref, task),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 8.0),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 6, color: task.isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.tertiaryContainer), // Color-coded task border
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle_outline, size: 20, color: task.isCompleted ? Theme.of(context).colorScheme.tertiaryContainer : Theme.of(context).colorScheme.outlineVariant),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              task.title,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                                color: task.isCompleted ? Theme.of(context).colorScheme.outline : Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(4)),
-                            child: Text('TASK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          SizedBox(width: 28),
-                          Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.outline),
-                          SizedBox(width: 4),
-                          Text(subtitle, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEventTile(Event event) {
-    return GestureDetector(
-      onTap: () => _showEventModal(context, ref, event),
-      child: Container(
-        margin: EdgeInsets.only(bottom: 8.0),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 6, color: Theme.of(context).colorScheme.primary), // Color-coded event border
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.event, size: 20, color: Theme.of(context).colorScheme.primary),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              event.title,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          SizedBox(width: 28),
-                          Icon(Icons.schedule, size: 14, color: Theme.of(context).colorScheme.primary),
-                          SizedBox(width: 4),
-                          Text(
-                            '${DateFormat.jm().format(event.startTime)} - ${DateFormat.jm().format(event.endTime)}',
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   void _showEventModal(BuildContext context, WidgetRef ref, Event? existingEvent) {
     String title = existingEvent?.title ?? '';

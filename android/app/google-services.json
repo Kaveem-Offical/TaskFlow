@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "438447775400",
+    "project_id": "todo-pomodoro-3ed9c",
+    "storage_bucket": "todo-pomodoro-3ed9c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:438447775400:android:b24bd86be03a8718a82c9d",
+        "android_client_info": {
+          "package_name": "com.alurd.pomodoro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKblc0v8zvRqYm32ZkZLAR3-_jm409qPk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:438447775400:android:9560f90d150b126ea82c9d",
+        "android_client_info": {
+          "package_name": "com.example.taskflow_suite"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKblc0v8zvRqYm32ZkZLAR3-_jm409qPk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

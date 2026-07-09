@@ -90,7 +90,7 @@ class FocusScreen extends ConsumerWidget {
                           ),
                         Text(
                           '$minutes:$seconds',
-                          style: GoogleFonts.jetBrainsMono(
+                          style: GoogleFonts.inter(
                             fontSize: 56,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onSurface,
