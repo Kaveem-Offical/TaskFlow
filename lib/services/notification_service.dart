@@ -37,21 +37,65 @@ class NotificationService {
         ),
       );
       _isInitialized = true;
+      await requestPermissions();
     } catch (e) {
       print('NotificationService init error: $e');
     }
   }
 
+  Future<bool> requestPermissions() async {
+    bool granted = false;
+
+    try {
+      final androidImplementation = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidImplementation != null) {
+        final notifGranted = await androidImplementation.requestNotificationsPermission();
+        await androidImplementation.requestExactAlarmsPermission();
+        granted = notifGranted ?? true;
+      }
+
+      final iosImplementation = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      if (iosImplementation != null) {
+        final iosGranted = await iosImplementation.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        granted = iosGranted ?? true;
+      }
+    } catch (e) {
+      print('NotificationService requestPermissions error: $e');
+    }
+
+    return granted;
+  }
+
   Future<void> scheduleTaskNotification(Task task) async {
-    if (task.startTime == null) return;
-    
-    // Only schedule if the start time is in the future
-    if (task.startTime!.isBefore(DateTime.now())) return;
+    // If completed or reminder disabled (-1 or null), cancel any scheduled notification
+    if (task.isCompleted || task.notificationMinutesBefore == null || task.notificationMinutesBefore == -1) {
+      await cancelNotification(task.id.hashCode);
+      return;
+    }
+
+    // Determine target time: use startTime if set, otherwise dueDate
+    final DateTime? targetTime = task.startTime ?? task.dueDate;
+    if (targetTime == null) return;
+
+    final int minutesBefore = task.notificationMinutesBefore ?? 0;
+    final DateTime scheduledDateTime = targetTime.subtract(Duration(minutes: minutesBefore));
+
+    // Only schedule if the calculated notification time is in the future
+    if (scheduledDateTime.isBefore(DateTime.now())) return;
+
+    // Ensure permissions are granted
+    await requestPermissions();
 
     final androidDetails = const AndroidNotificationDetails(
       'taskflow_task_channel',
       'Task Reminders',
-      channelDescription: 'Notifications for task start times',
+      channelDescription: 'Notifications for task start times and reminders',
       importance: Importance.max,
       priority: Priority.high,
     );
@@ -61,17 +105,42 @@ class NotificationService {
     // Cancel any existing notification for this task to avoid duplicates
     await cancelNotification(task.id.hashCode);
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: task.id.hashCode,
-      title: 'Time to Focus!',
-      body: 'Your task "${task.title}" is scheduled to start now.',
-      scheduledDate: tz.TZDateTime.from(task.startTime!, tz.local),
-      notificationDetails: details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+    String title;
+    String body;
+    if (minutesBefore > 0) {
+      String timeLabel;
+      if (minutesBefore < 60) {
+        timeLabel = '$minutesBefore minutes';
+      } else if (minutesBefore == 60) {
+        timeLabel = '1 hour';
+      } else if (minutesBefore == 1440) {
+        timeLabel = '1 day';
+      } else {
+        timeLabel = '$minutesBefore minutes';
+      }
+      title = 'Upcoming Task Reminder ⏰';
+      body = 'Your task "${task.title}" starts in $timeLabel.';
+    } else {
+      title = 'Time to Focus! 🚀';
+      body = 'Your task "${task.title}" is scheduled to start now.';
+    }
+
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id: task.id.hashCode,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(scheduledDateTime, tz.local),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (e) {
+      print('NotificationService schedule error: $e');
+    }
   }
 
   Future<void> cancelNotification(int id) async {
     await flutterLocalNotificationsPlugin.cancel(id: id);
   }
 }
+

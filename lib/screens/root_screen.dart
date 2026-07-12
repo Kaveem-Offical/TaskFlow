@@ -12,6 +12,8 @@ import 'calendar_screen.dart';
 import 'focus_screen.dart';
 import 'insights_screen.dart';
 import 'analytics_screen.dart';
+import 'dart:async';
+import 'package:home_widget/home_widget.dart';
 import 'settings_screen.dart';
 import '../services/widget_service.dart';
 
@@ -34,6 +36,41 @@ class _RootScreenState extends ConsumerState<RootScreen> {
 
   List<Task> _latestTasks = [];
   List<FocusSession> _latestSessions = [];
+  StreamSubscription<Uri?>? _widgetClickSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToWidgetClicks();
+  }
+
+  void _listenToWidgetClicks() {
+    // Cold launch from widget click
+    HomeWidget.initiallyLaunchedFromHomeWidget().then((uri) {
+      if (uri != null) {
+        _handleWidgetClick(uri);
+      }
+    });
+
+    // Warm launch/resume from widget click
+    _widgetClickSub = HomeWidget.widgetClicked.listen((uri) {
+      if (uri != null) {
+        _handleWidgetClick(uri);
+      }
+    });
+  }
+
+  void _handleWidgetClick(Uri uri) {
+    if (uri.host == 'insights' || uri.path.contains('insights') || uri.toString().contains('insights')) {
+      ref.read(navigationProvider.notifier).setIndex(3);
+    }
+  }
+
+  @override
+  void dispose() {
+    _widgetClickSub?.cancel();
+    super.dispose();
+  }
 
   void _refreshWidget() {
     WidgetService.updateWidget(_latestTasks, _latestSessions);

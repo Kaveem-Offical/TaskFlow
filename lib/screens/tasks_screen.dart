@@ -496,6 +496,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           dueDate: nextDueDate,
           startTime: nextStartTime,
           endTime: nextEndTime,
+          notificationMinutesBefore: task.notificationMinutesBefore,
           isCompleted: false,
         );
         ref.read(taskRepositoryProvider).addTask(nextTask);
@@ -678,6 +679,7 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
   DateTime? dueDate = existingTask?.dueDate;
   TimeOfDay? startTime = existingTask?.startTime != null ? TimeOfDay.fromDateTime(existingTask!.startTime!) : null;
   TimeOfDay? endTime = existingTask?.endTime != null ? TimeOfDay.fromDateTime(existingTask!.endTime!) : null;
+  int? notificationMinutesBefore = existingTask?.notificationMinutesBefore ?? 0;
   
   showModalBottomSheet(
     context: context,
@@ -920,6 +922,44 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        PremiumCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(LucideIcons.bell, size: 18, color: theme.colorScheme.primary),
+                                  const SizedBox(width: 10),
+                                  Text('Reminder', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                              DropdownButtonHideUnderline(
+                                child: DropdownButton<int?>(
+                                  value: notificationMinutesBefore,
+                                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600),
+                                  icon: Icon(LucideIcons.chevronDown, size: 16, color: theme.colorScheme.primary),
+                                  items: const [
+                                    DropdownMenuItem(value: 0, child: Text('At event time')),
+                                    DropdownMenuItem(value: 5, child: Text('5 min before')),
+                                    DropdownMenuItem(value: 10, child: Text('10 min before')),
+                                    DropdownMenuItem(value: 15, child: Text('15 min before')),
+                                    DropdownMenuItem(value: 30, child: Text('30 min before')),
+                                    DropdownMenuItem(value: 60, child: Text('1 hour before')),
+                                    DropdownMenuItem(value: 1440, child: Text('1 day before')),
+                                    DropdownMenuItem(value: -1, child: Text('None')),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setModalState(() => notificationMinutesBefore = val);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 32),
                         PremiumButton(
                           onPressed: () {
@@ -947,16 +987,37 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                                 repeatEndDate: repeatEndDate,
                                 parentTaskId: existingTask?.parentTaskId,
                                 dueDate: dueDate ?? existingTask?.dueDate ?? DateTime.now(),
-                          startTime: fullStartTime,
-                          endTime: fullEndTime,
-                        );
+                                startTime: fullStartTime,
+                                endTime: fullEndTime,
+                                notificationMinutesBefore: notificationMinutesBefore,
+                              );
 
-                        if (existingTask == null) {
-                          ref.read(taskRepositoryProvider).addTask(task);
-                        } else {
-                          ref.read(taskRepositoryProvider).updateTask(task);
-                        }
-                        Navigator.pop(context);
+                              if (existingTask == null) {
+                                ref.read(taskRepositoryProvider).addTask(task);
+                              } else {
+                                ref.read(taskRepositoryProvider).updateTask(task);
+                              }
+                              Navigator.pop(context);
+
+                              if (notificationMinutesBefore != null && notificationMinutesBefore != -1) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Icon(LucideIcons.bellRing, size: 18, color: Colors.white),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          notificationMinutesBefore == 0
+                                              ? 'Reminder scheduled at start time'
+                                              : 'Reminder scheduled $notificationMinutesBefore min before start',
+                                        ),
+                                      ],
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                       }
                     },
                     label: existingTask == null ? 'Create Task' : 'Save Changes',

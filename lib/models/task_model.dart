@@ -16,6 +16,10 @@ class Task {
   final DateTime? repeatEndDate;
   final String? parentTaskId;
 
+  // Notification / Reminder option in minutes before start/due time
+  // null or -1 indicates no notification
+  final int? notificationMinutesBefore;
+
   Task({
     required this.id,
     required this.title,
@@ -29,6 +33,7 @@ class Task {
     this.repeatMode,
     this.repeatEndDate,
     this.parentTaskId,
+    this.notificationMinutesBefore = 0,
   });
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
@@ -46,6 +51,7 @@ class Task {
       repeatMode: data['repeatMode'],
       repeatEndDate: data['repeatEndDate'] != null ? (data['repeatEndDate'] as Timestamp).toDate() : null,
       parentTaskId: data['parentTaskId'],
+      notificationMinutesBefore: data['notificationMinutesBefore'] ?? 0,
     );
   }
 
@@ -62,6 +68,7 @@ class Task {
       if (repeatMode != null) 'repeatMode': repeatMode,
       if (repeatEndDate != null) 'repeatEndDate': Timestamp.fromDate(repeatEndDate!),
       if (parentTaskId != null) 'parentTaskId': parentTaskId,
+      if (notificationMinutesBefore != null) 'notificationMinutesBefore': notificationMinutesBefore,
     };
   }
   
@@ -77,6 +84,7 @@ class Task {
     String? repeatMode,
     DateTime? repeatEndDate,
     String? parentTaskId,
+    int? notificationMinutesBefore,
   }) {
     return Task(
       id: id,
@@ -91,6 +99,7 @@ class Task {
       repeatMode: repeatMode ?? this.repeatMode,
       repeatEndDate: repeatEndDate ?? this.repeatEndDate,
       parentTaskId: parentTaskId ?? this.parentTaskId,
+      notificationMinutesBefore: notificationMinutesBefore ?? this.notificationMinutesBefore,
     );
   }
 }

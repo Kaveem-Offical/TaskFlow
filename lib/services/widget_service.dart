@@ -16,16 +16,20 @@ class WidgetService {
     try {
       await HomeWidget.renderFlutterWidget(
         _FocusDistributionWidget(tasks: tasks, sessions: sessions),
-        logicalSize: const Size(400, 200),
+        logicalSize: const Size(800, 400),
         key: 'chart_image',
       );
 
       await HomeWidget.updateWidget(
         name: 'ProductivityWidgetProvider',
+        androidName: 'ProductivityWidgetProvider',
+        qualifiedAndroidName: 'com.example.taskflow_suite.ProductivityWidgetProvider',
         iOSName: 'ProductivityWidget',
       );
-    } catch (e) {
-      debugPrint('Error updating widget: $e');
+    } catch (e, stack) {
+      debugPrint('WidgetService.updateWidget error: $e');
+      debugPrintStack(stackTrace: stack, label: 'WidgetService.updateWidget');
+      // Do NOT rethrow — caller in root_screen is fire-and-forget (no await/catch)
     }
   }
 }
@@ -105,11 +109,16 @@ class _FocusDistributionWidget extends StatelessWidget {
 
     // Today / Week stat strings
     final todayH = todayMinutes ~/ 60;
-    final todayStr = todayH > 0 ? '${todayH}h' : '${todayMinutes}m';
+    final todayM = todayMinutes % 60;
+    final todayStr = todayH > 0
+        ? (todayM > 0 ? '${todayH}h ${todayM}m' : '${todayH}h')
+        : '${todayMinutes}m';
 
     final weekH = weekMinutes ~/ 60;
     final weekM = weekMinutes % 60;
-    final weekStr = weekM > 0 ? '${weekH}h${weekM}m' : '${weekH}h';
+    final weekStr = weekH > 0
+        ? (weekM > 0 ? '${weekH}h ${weekM}m' : '${weekH}h')
+        : '${weekMinutes}m';
 
     // Day labels Mon → Sun
     final dayLabels = List.generate(7, (i) {
@@ -118,50 +127,87 @@ class _FocusDistributionWidget extends StatelessWidget {
       return names[d.weekday - 1];
     });
 
-    return MediaQuery(
-      data: const MediaQueryData(size: Size(400, 200)),
-      child: Directionality(
-        textDirection: ui.TextDirection.ltr,
-        child: Material(
-          color: const Color(0xFF1C1C1E),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // LEFT: stats + chart
-                Expanded(
-                  flex: 62,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Stats row
-                      Row(
-                        children: [
-                          _StatLabel(title: 'Today', value: todayStr),
-                          const SizedBox(width: 28),
-                          _StatLabel(title: 'Week', value: weekStr),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // Chart
-                      Expanded(
-                        child: _BarChart(
-                          dayData: dayData,
-                          categoryColors: categoryColors,
-                          dayLabels: dayLabels,
+    // SizedBox is CRITICAL: home_widget's renderFlutterWidget uses
+    // RenderPositionedBox (which loosens constraints) then a Column (which gives
+    // children unbounded height). Without tight height, our inner Column's
+    // Expanded(_BarChart) throws "RenderFlex children have non-zero flex but
+    // incoming height constraints are unbounded" — caught & swallowed inside
+    // renderFlutterWidget so chart_image is never written. The SizedBox forces
+    // tight 800×400 constraints at our root, matching logicalSize.
+    return SizedBox(
+      width: 800,
+      height: 400,
+      child: MediaQuery(
+        data: const MediaQueryData(
+          size: Size(800, 400),
+          devicePixelRatio: 1.0,
+        ),
+        child: DefaultTextStyle(
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontFamily: 'Roboto',
+            decoration: TextDecoration.none,
+          ),
+          child: Directionality(
+            textDirection: ui.TextDirection.ltr,
+            child: Material(
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(36),
+              clipBehavior: Clip.antiAlias,
+              child: LayoutBuilder(
+
+                builder: (context, constraints) {
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      constraints.maxWidth * 0.035,
+                      constraints.maxHeight * 0.06,
+                      constraints.maxWidth * 0.035,
+                      constraints.maxHeight * 0.05,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // LEFT: stats + chart
+                        Expanded(
+                          flex: 78,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Stats row
+                              Row(
+                                children: [
+                                  _StatLabel(title: 'Today', value: todayStr, size: constraints),
+                                  SizedBox(width: constraints.maxWidth * 0.07),
+                                  _StatLabel(title: 'Week', value: weekStr, size: constraints),
+                                ],
+                              ),
+                              SizedBox(height: constraints.maxHeight * 0.03),
+                              // Chart
+                              Expanded(
+                                child: SizedBox.expand(
+                                  child: _BarChart(
+                                    dayData: dayData,
+                                    categoryColors: categoryColors,
+                                    dayLabels: dayLabels,
+                                    todayIndex: weekdayOffset,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // RIGHT: legend
-                SizedBox(
-                  width: 108,
-                  child: _Legend(categoryColors: categoryColors),
-                ),
-              ],
+                        SizedBox(width: constraints.maxWidth * 0.025),
+                        // RIGHT: legend
+                        Expanded(
+                          flex: 22,
+                          child: _Legend(categoryColors: categoryColors, size: constraints),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -176,7 +222,8 @@ class _FocusDistributionWidget extends StatelessWidget {
 class _StatLabel extends StatelessWidget {
   final String title;
   final String value;
-  const _StatLabel({required this.title, required this.value});
+  final BoxConstraints size;
+  const _StatLabel({required this.title, required this.value, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -184,11 +231,15 @@ class _StatLabel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: const TextStyle(
-                color: Color(0xFF9E9E9E), fontSize: 12, fontWeight: FontWeight.w400)),
+            style: TextStyle(
+                color: const Color(0xFF9E9E9E), 
+                fontSize: size.maxHeight * 0.06, 
+                fontWeight: FontWeight.w400)),
         Text(value,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold,
+            style: TextStyle(
+                color: Colors.white, 
+                fontSize: size.maxHeight * 0.11, 
+                fontWeight: FontWeight.bold,
                 height: 1.1)),
       ],
     );
@@ -200,14 +251,15 @@ class _StatLabel extends StatelessWidget {
 // ──────────────────────────────────────────────────────────────────────────────
 class _Legend extends StatelessWidget {
   final Map<String, Color> categoryColors;
-  const _Legend({required this.categoryColors});
+  final BoxConstraints size;
+  const _Legend({required this.categoryColors, required this.size});
 
   @override
   Widget build(BuildContext context) {
     if (categoryColors.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('No data',
-            style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 11)),
+            style: TextStyle(color: const Color(0xFF9E9E9E), fontSize: size.maxHeight * 0.05)),
       );
     }
     return Column(
@@ -215,18 +267,18 @@ class _Legend extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: categoryColors.entries.map((e) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 9),
+          padding: EdgeInsets.only(bottom: size.maxHeight * 0.04),
           child: Row(
             children: [
               Container(
-                width: 9, height: 9,
+                width: size.maxHeight * 0.045, height: size.maxHeight * 0.045,
                 decoration: BoxDecoration(color: e.value, shape: BoxShape.circle),
               ),
-              const SizedBox(width: 7),
+              SizedBox(width: size.maxWidth * 0.02),
               Expanded(
                 child: Text(
                   e.key,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: Colors.white, fontSize: size.maxHeight * 0.06),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -246,11 +298,13 @@ class _BarChart extends StatelessWidget {
   final Map<int, Map<String, double>> dayData;
   final Map<String, Color> categoryColors;
   final List<String> dayLabels;
+  final int todayIndex;
 
   const _BarChart({
     required this.dayData,
     required this.categoryColors,
     required this.dayLabels,
+    required this.todayIndex,
   });
 
   @override
@@ -260,6 +314,7 @@ class _BarChart extends StatelessWidget {
         dayData: dayData,
         categoryColors: categoryColors,
         dayLabels: dayLabels,
+        todayIndex: todayIndex,
       ),
     );
   }
@@ -269,17 +324,19 @@ class _ChartPainter extends CustomPainter {
   final Map<int, Map<String, double>> dayData;
   final Map<String, Color> categoryColors;
   final List<String> dayLabels;
+  final int todayIndex;
 
   _ChartPainter({
     required this.dayData,
     required this.categoryColors,
     required this.dayLabels,
+    required this.todayIndex,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    const xLabelH = 18.0; // height reserved for day labels
-    const yLabelW = 30.0; // width reserved for hour labels
+    const xLabelH = 22.0; // height reserved for day labels
+    const yLabelW = 32.0; // width reserved for hour labels
 
     final chartH = size.height - xLabelH;
     final chartW = size.width - yLabelW;
@@ -290,53 +347,58 @@ class _ChartPainter extends CustomPainter {
       final total = day.values.fold(0.0, (a, b) => a + b);
       if (total > maxMin) maxMin = total;
     }
-    // round up maxMin to nearest "nice" hour boundary
     double maxMinutes = maxMin <= 0 ? 240 : maxMin * 1.25; // at least 4 h
-    // Y labels: 0m, 4h, 8h, 12h (or scaled)
     final maxHours = (maxMinutes / 60).ceil();
-    // choose step so we get ~3-4 labels
-    int stepH = 4;
-    if (maxHours > 12) stepH = 4;
-    if (maxHours > 24) stepH = 8;
+    int stepH = 2;
+    if (maxHours > 6) stepH = 4;
+    if (maxHours > 16) stepH = 8;
     final topH = ((maxHours / stepH).ceil() * stepH).clamp(stepH, 999);
     maxMinutes = topH * 60.0;
 
     // ── grid & y-axis labels ─────────────────────────────────────────────────
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.13)
-      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..strokeWidth = size.height * 0.0035
       ..style = PaintingStyle.stroke;
 
     final steps = topH ~/ stepH;
     for (int i = 0; i <= steps; i++) {
       final y = chartH - (chartH * i / steps);
-      // dashed line
       _drawDashedLine(canvas, Offset(yLabelW, y), Offset(size.width, y), gridPaint);
 
       final hours = i * stepH;
       final label = hours == 0 ? '0m' : '${hours}h';
-      _drawText(canvas, label, Offset(0, y - 7), const Color(0xFF9E9E9E), 9.5,
-          align: ui.TextAlign.right, maxWidth: yLabelW - 4);
+      _drawText(canvas, label, Offset(0, y - (size.height * 0.035)), const Color(0xFF8E8E93), size.height * 0.0475,
+          align: ui.TextAlign.right, maxWidth: yLabelW - 6);
     }
 
     // ── bars ─────────────────────────────────────────────────────────────────
     final barSlot = chartW / 7;
-    final barW = barSlot * 0.50;
+    final barW = barSlot * 0.70;
 
     for (int dayIdx = 0; dayIdx < 7; dayIdx++) {
       final dayCounts = dayData[dayIdx] ?? {};
       final x = yLabelW + dayIdx * barSlot + (barSlot - barW) / 2;
 
+      // Draw subtle background capsule track for every day slot
+      final trackRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, 0, barW, chartH),
+        const Radius.circular(6),
+      );
+      canvas.drawRRect(
+        trackRect,
+        Paint()..color = Colors.white.withValues(alpha: dayIdx == todayIndex ? 0.09 : 0.04),
+      );
+
       final total = dayCounts.values.fold(0.0, (a, b) => a + b);
 
       if (dayCounts.isEmpty || total == 0) {
-        // tiny placeholder nub
-        final rect = RRect.fromRectAndCorners(
-          Rect.fromLTWH(x, chartH - 3, barW, 3),
-          topLeft: const Radius.circular(2),
-          topRight: const Radius.circular(2),
+        // Subtle base pill indicator
+        final rect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, chartH - 4, barW, 4),
+          const Radius.circular(2),
         );
-        canvas.drawRRect(rect, Paint()..color = Colors.white10);
+        canvas.drawRRect(rect, Paint()..color = Colors.white.withValues(alpha: 0.15));
       } else {
         double currentPx = 0;
         final entries = dayCounts.entries.toList();
@@ -347,26 +409,55 @@ class _ChartPainter extends CustomPainter {
           final segH = (val / maxMinutes) * chartH;
           final color = categoryColors[cat] ?? Colors.grey;
           final isTop = ei == entries.length - 1;
+          final isBottom = ei == 0;
 
           final rect = RRect.fromRectAndCorners(
             Rect.fromLTWH(x, chartH - currentPx - segH, barW, segH),
-            topLeft: isTop ? const Radius.circular(4) : Radius.zero,
-            topRight: isTop ? const Radius.circular(4) : Radius.zero,
+            topLeft: isTop ? const Radius.circular(6) : Radius.zero,
+            topRight: isTop ? const Radius.circular(6) : Radius.zero,
+            bottomLeft: isBottom ? const Radius.circular(6) : Radius.zero,
+            bottomRight: isBottom ? const Radius.circular(6) : Radius.zero,
           );
           canvas.drawRRect(rect, Paint()..color = color);
           currentPx += segH;
         }
       }
 
-      // day label
-      _drawText(
+      // Highlight today's day label
+      final isToday = dayIdx == todayIndex;
+      final labelColor = isToday ? Colors.white : const Color(0xFF8E8E93);
+      _drawCenteredText(
         canvas,
         dayLabels[dayIdx],
-        Offset(x + barW / 2 - 5, chartH + 4),
-        const Color(0xFF9E9E9E),
-        10.5,
+        Offset(x + barW / 2, chartH + (size.height * 0.022)),
+        labelColor,
+        size.height * (isToday ? 0.056 : 0.051),
       );
     }
+  }
+
+  void _drawCenteredText(
+    Canvas canvas,
+    String text,
+    Offset centerOffset,
+    Color color,
+    double fontSize,
+  ) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset(centerOffset.dx - tp.width / 2, centerOffset.dy),
+    );
   }
 
   void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {

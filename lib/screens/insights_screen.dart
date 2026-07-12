@@ -314,6 +314,57 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
   Widget _buildDetailsSection(List<FocusSession> sessions, List<Task> tasks, BuildContext context) {
     final theme = Theme.of(context);
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfWeek = startOfDay.subtract(Duration(days: now.weekday - 1));
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    
+    DateTime filterStart;
+    if (_detailsTab == 'Day') {
+      filterStart = startOfDay;
+    } else if (_detailsTab == 'Week') {
+      filterStart = startOfWeek;
+    } else {
+      filterStart = startOfMonth;
+    }
+    
+    final filteredSessions = sessions.where((s) => s.timestamp.isAfter(filterStart) || s.timestamp.isAtSameMomentAs(filterStart)).toList();
+    
+    Map<String, int> categoryDuration = {};
+    Map<String, int> taskDuration = {};
+    for (var s in filteredSessions) {
+      final task = tasks.firstWhere((t) => t.id == s.linkedTaskId, orElse: () => Task(id: '', title: 'General Task', category: 'General'));
+      categoryDuration[task.category] = (categoryDuration[task.category] ?? 0) + s.durationMinutes;
+      taskDuration[task.title] = (taskDuration[task.title] ?? 0) + s.durationMinutes;
+    }
+
+    final totalDuration = categoryDuration.values.fold(0, (a, b) => a + b);
+    List<PieChartSectionData> pieSections = [];
+    final colors = [theme.colorScheme.primary, theme.colorScheme.secondary, theme.colorScheme.tertiary, theme.colorScheme.error, Colors.orange];
+    int colorIdx = 0;
+    
+    if (totalDuration > 0) {
+      categoryDuration.forEach((cat, duration) {
+        pieSections.add(PieChartSectionData(
+          value: duration.toDouble(),
+          color: colors[colorIdx % colors.length],
+          title: '${((duration / totalDuration) * 100).toStringAsFixed(0)}%',
+          radius: 20,
+          titleStyle: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold),
+        ));
+        colorIdx++;
+      });
+    } else {
+      pieSections.add(PieChartSectionData(
+        value: 100,
+        color: theme.colorScheme.surfaceContainerHighest,
+        radius: 16,
+        showTitle: false,
+      ));
+    }
+
+    final sortedTasks = taskDuration.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
     return PremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,21 +392,43 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                     PieChartData(
                       sectionsSpace: 2,
                       centerSpaceRadius: 65,
-                      sections: [
-                        PieChartSectionData(
-                          value: 100,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          radius: 16,
-                          showTitle: false,
-                        ),
-                      ],
+                      sections: pieSections,
                     ),
                   ),
-                  Text('No Data', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  if (totalDuration == 0)
+                    Text('No Data', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))
+                  else
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${totalDuration ~/ 60}h ${totalDuration % 60}m', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        Text('Total', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
                 ],
               ),
             ),
           ),
+          if (totalDuration > 0) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: categoryDuration.entries.toList().asMap().entries.map((entry) {
+                final idx = entry.key;
+                final cat = entry.value.key;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 10, height: 10, decoration: BoxDecoration(color: colors[idx % colors.length], shape: BoxShape.circle)),
+                    const SizedBox(width: 4),
+                    Text(cat, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
           const SizedBox(height: 32),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -370,8 +443,22 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text('None', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 16),
+          if (sortedTasks.isEmpty)
+            Text('None', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))
+          else
+            ...sortedTasks.take(5).map((entry) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(entry.key, style: theme.textTheme.bodyMedium, overflow: TextOverflow.ellipsis)),
+                    Text('${entry.value ~/ 60}h ${entry.value % 60}m', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -379,6 +466,51 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
   Widget _buildTrendsSection(List<FocusSession> sessions, BuildContext context) {
     final theme = Theme.of(context);
+    final now = DateTime.now();
+
+    List<String> labels = [];
+    List<double> values = [];
+    double average = 0;
+    String averageLabel = 'Daily Average';
+
+    if (_trendsTab == 'Week') {
+      final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+      labels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+      values = List.filled(7, 0);
+      for (var s in sessions) {
+        if (s.timestamp.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) && s.timestamp.isBefore(startOfWeek.add(const Duration(days: 7)))) {
+          values[s.timestamp.weekday - 1] += s.durationMinutes;
+        }
+      }
+      average = values.reduce((a, b) => a + b) / 7;
+    } else if (_trendsTab == 'Month') {
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      labels = ['W1', 'W2', 'W3', 'W4'];
+      values = List.filled(4, 0);
+      for (var s in sessions) {
+        if (s.timestamp.year == now.year && s.timestamp.month == now.month) {
+          int weekIndex = (s.timestamp.day - 1) ~/ 7;
+          if (weekIndex > 3) weekIndex = 3;
+          values[weekIndex] += s.durationMinutes;
+        }
+      }
+      average = values.reduce((a, b) => a + b) / 4;
+      averageLabel = 'Weekly Average';
+    } else if (_trendsTab == 'Year') {
+      labels = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+      values = List.filled(12, 0);
+      for (var s in sessions) {
+        if (s.timestamp.year == now.year) {
+          values[s.timestamp.month - 1] += s.durationMinutes;
+        }
+      }
+      average = values.reduce((a, b) => a + b) / 12;
+      averageLabel = 'Monthly Average';
+    }
+
+    double maxY = values.isEmpty ? 60 : values.reduce((a, b) => a > b ? a : b);
+    if (maxY == 0) maxY = 60;
+
     return PremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,15 +529,53 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             }, context, compact: true),
           ),
           const SizedBox(height: 32),
-          Center(
-            child: Text('No Data', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ),
-          const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((day) => 
-              Text(day, style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))
-            ).toList(),
+          SizedBox(
+            height: 180,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY * 1.2,
+                barTouchData: BarTouchData(enabled: false),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value >= 0 && value < labels.length) {
+                          return Text(labels[value.toInt()], style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant));
+                        }
+                        return const Text('');
+                      },
+                      reservedSize: 28,
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(labels.length, (index) {
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: values[index],
+                        color: theme.colorScheme.primary,
+                        width: 16,
+                        borderRadius: BorderRadius.circular(4),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: maxY * 1.2,
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           Divider(color: theme.colorScheme.outline.withValues(alpha: 0.2)),
@@ -413,8 +583,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Daily Average', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              Text('0m', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              Text(averageLabel, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              Text('${average ~/ 60}h ${(average % 60).toInt()}m', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             ],
           ),
         ],
@@ -445,52 +615,77 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: ['00:00', '06:00', '12:00', '18:00'].map((t) => 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    child: Text(t, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                  )
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: ['00:00', '06:00', '12:00', '18:00', '24:00'].map((t) => 
+                  Text(t, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))
                 ).toList(),
               ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Container(
-                  height: 140,
-                  padding: const EdgeInsets.only(left: 16),
+                  height: 160,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final width = constraints.maxWidth;
                       final height = constraints.maxHeight;
-                      final dayHeight = height / 7.0;
+                      final dayWidth = width / 7.0;
 
                       return Stack(
-                        children: weekSessions.map((session) {
-                          int dayIndex = session.timestamp.weekday - 1;
-                          int minutesSinceMidnight = session.timestamp.hour * 60 + session.timestamp.minute;
-                          
-                          double leftPos = (minutesSinceMidnight / 1440.0) * width;
-                          double blockWidth = (session.durationMinutes / 1440.0) * width;
-                          if (blockWidth < 4) blockWidth = 4;
-                          if (leftPos + blockWidth > width) blockWidth = width - leftPos;
-
-                          double topPos = dayIndex * dayHeight + (dayHeight * 0.2);
-
-                          return Positioned(
-                            left: leftPos,
-                            top: topPos,
-                            width: blockWidth,
-                            height: dayHeight * 0.6,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                borderRadius: BorderRadius.circular(2),
+                        children: [
+                          // Draw horizontal grid lines (every 6 hours)
+                          ...List.generate(5, (i) {
+                            return Positioned(
+                              top: (i / 4) * height,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                height: 1,
+                                color: theme.colorScheme.outline.withValues(alpha: 0.1),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            );
+                          }),
+                          // Draw vertical grid lines (every day)
+                          ...List.generate(8, (i) {
+                            return Positioned(
+                              top: 0,
+                              bottom: 0,
+                              left: i * dayWidth,
+                              child: Container(
+                                width: 1,
+                                color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                              ),
+                            );
+                          }),
+                          ...weekSessions.map((session) {
+                            int dayIndex = session.timestamp.weekday - 1;
+                            int minutesSinceMidnight = session.timestamp.hour * 60 + session.timestamp.minute;
+                            
+                            double leftPos = dayIndex * dayWidth + (dayWidth * 0.05);
+                            double blockWidth = dayWidth * 0.9;
+                            
+                            double topPos = (minutesSinceMidnight / 1440.0) * height;
+                            double blockHeight = (session.durationMinutes / 1440.0) * height;
+                            if (blockHeight < 4) blockHeight = 4;
+                            if (topPos + blockHeight > height) blockHeight = height - topPos;
+
+                            return Positioned(
+                              left: leftPos,
+                              top: topPos,
+                              width: blockWidth,
+                              height: blockHeight,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.9),
+                                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.5), width: 1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
                       );
                     }
                   ),
@@ -498,13 +693,17 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Padding(
-            padding: const EdgeInsets.only(left: 40.0),
+            padding: const EdgeInsets.only(left: 40.0), // Approximate width of time labels
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => 
-                Text(day, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))
+                Expanded(
+                  child: Center(
+                    child: Text(day, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ),
+                )
               ).toList(),
             ),
           ),
@@ -538,7 +737,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       },
       context: context,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -549,32 +748,43 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
               Text('${(maxMinutes * 0.5) ~/ 60}h${((maxMinutes * 0.5).toInt()) % 60}m', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               Text('${(maxMinutes * 0.25) ~/ 60}h${((maxMinutes * 0.25).toInt()) % 60}m', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               Text('0m', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            ].map((e) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: e)).toList(),
+            ].map((e) => Padding(padding: const EdgeInsets.only(bottom: 18), child: e)).toList(),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: SizedBox(
-              height: 140,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(24, (index) {
-                  double pct = hourlyMinutes[index] / maxMinutes;
-                  double height = 140 * pct;
-                  if (height < 2 && hourlyMinutes[index] > 0) height = 2;
-                  
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutQuart,
-                    width: 8,
-                    height: height,
-                    decoration: BoxDecoration(
-                      color: height > 0 ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
-                    ),
-                  );
-                }),
-              ),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 140,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(24, (index) {
+                      double pct = hourlyMinutes[index] / maxMinutes;
+                      double height = 140 * pct;
+                      if (height < 2 && hourlyMinutes[index] > 0) height = 2;
+                      
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutQuart,
+                        width: 8,
+                        height: height,
+                        decoration: BoxDecoration(
+                          color: height > 0 ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: ['12A', '6A', '12P', '6P', '11P'].map((t) => 
+                    Text(t, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 10))
+                  ).toList(),
+                ),
+              ],
             ),
           ),
         ],
@@ -596,7 +806,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
     bool isLeap = (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0));
     int totalDays = isLeap ? 366 : 365;
-    int weeks = (totalDays / 7).ceil();
+    int firstDayOffset = DateTime(year, 1, 1).weekday - 1; // 0 = Monday, 6 = Sunday
+    int totalCells = totalDays + firstDayOffset;
+    int weeks = (totalCells / 7).ceil();
 
     return _buildChartSection(
       title: 'Year Grids',
@@ -611,51 +823,98 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       },
       context: context,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['Jan', 'Apr', 'Jul', 'Oct'].map((m) => 
-              Text(m, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))
-            ).toList(),
-          ),
-          const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(weeks, (weekIndex) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4.0),
-                  child: Column(
-                    children: List.generate(7, (dayIndex) {
-                      int dayOfYear = weekIndex * 7 + dayIndex;
-                      if (dayOfYear >= totalDays) return const SizedBox(width: 12, height: 12);
-                      
-                      int minutes = dayMinutes[dayOfYear] ?? 0;
-                      Color color = theme.colorScheme.surfaceContainerHighest;
-                      if (minutes > 300) {
-                         color = theme.colorScheme.primary;
-                      } else if (minutes >= 180) {
-                         color = theme.colorScheme.primary.withValues(alpha: 0.8);
-                      } else if (minutes >= 60) {
-                         color = theme.colorScheme.primary.withValues(alpha: 0.5);
-                      } else if (minutes > 0) {
-                         color = theme.colorScheme.primary.withValues(alpha: 0.2);
-                      }
-                      
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 4.0),
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      );
-                    }),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 28.0, right: 8.0),
+                  child: SizedBox(
+                    height: 7 * 16.0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(7, (i) {
+                        String text = '';
+                        if (i == 0) text = 'Mo';
+                        if (i == 2) text = 'We';
+                        if (i == 4) text = 'Fr';
+                        return SizedBox(
+                          height: 16,
+                          child: Text(text, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 10)),
+                        );
+                      }),
+                    ),
                   ),
-                );
-              }),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 20,
+                      width: weeks * 16.0,
+                      child: Stack(
+                        children: List.generate(12, (mIndex) {
+                          DateTime firstOfMonth = DateTime(year, mIndex + 1, 1);
+                          int dayOfYear = firstOfMonth.difference(DateTime(year, 1, 1)).inDays;
+                          int cellIndex = dayOfYear + firstDayOffset;
+                          int weekIndex = cellIndex ~/ 7;
+                          return Positioned(
+                            left: weekIndex * 16.0,
+                            child: Text(
+                              DateFormat('MMM').format(firstOfMonth),
+                              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(weeks, (weekIndex) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 4.0),
+                          child: Column(
+                            children: List.generate(7, (dayIndex) {
+                              int cellIndex = weekIndex * 7 + dayIndex;
+                              int dayOfYear = cellIndex - firstDayOffset;
+                              
+                              if (cellIndex < firstDayOffset || dayOfYear >= totalDays) {
+                                return const SizedBox(width: 12, height: 16); // Match height (12 + 4 bottom margin)
+                              }
+                              
+                              int minutes = dayMinutes[dayOfYear] ?? 0;
+                              Color color = theme.colorScheme.surfaceContainerHighest;
+                              if (minutes > 300) {
+                                 color = theme.colorScheme.primary;
+                              } else if (minutes >= 180) {
+                                 color = theme.colorScheme.primary.withValues(alpha: 0.8);
+                              } else if (minutes >= 60) {
+                                 color = theme.colorScheme.primary.withValues(alpha: 0.5);
+                              } else if (minutes > 0) {
+                                 color = theme.colorScheme.primary.withValues(alpha: 0.2);
+                              }
+                              
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 4.0),
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              );
+                            }),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
