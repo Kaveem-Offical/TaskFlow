@@ -1,5 +1,45 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class SubTask {
+  final String id;
+  final String title;
+  final bool isCompleted;
+
+  const SubTask({
+    required this.id,
+    required this.title,
+    this.isCompleted = false,
+  });
+
+  factory SubTask.fromMap(Map<String, dynamic> map) {
+    return SubTask(
+      id: map['id']?.toString() ?? '',
+      title: map['title']?.toString() ?? '',
+      isCompleted: map['isCompleted'] == true,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'isCompleted': isCompleted,
+    };
+  }
+
+  SubTask copyWith({
+    String? id,
+    String? title,
+    bool? isCompleted,
+  }) {
+    return SubTask(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      isCompleted: isCompleted ?? this.isCompleted,
+    );
+  }
+}
+
 class Task {
   final String id;
   final String title;
@@ -19,6 +59,7 @@ class Task {
   // Notification / Reminder option in minutes before start/due time
   // null or -1 indicates no notification
   final int? notificationMinutesBefore;
+  final List<SubTask> subtasks;
 
   Task({
     required this.id,
@@ -34,6 +75,7 @@ class Task {
     this.repeatEndDate,
     this.parentTaskId,
     this.notificationMinutesBefore = 0,
+    this.subtasks = const [],
   });
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
@@ -52,6 +94,10 @@ class Task {
       repeatEndDate: data['repeatEndDate'] != null ? (data['repeatEndDate'] as Timestamp).toDate() : null,
       parentTaskId: data['parentTaskId'],
       notificationMinutesBefore: data['notificationMinutesBefore'] ?? 0,
+      subtasks: (data['subtasks'] as List<dynamic>?)
+              ?.map((st) => SubTask.fromMap(Map<String, dynamic>.from(st as Map)))
+              .toList() ??
+          const [],
     );
   }
 
@@ -69,6 +115,7 @@ class Task {
       if (repeatEndDate != null) 'repeatEndDate': Timestamp.fromDate(repeatEndDate!),
       if (parentTaskId != null) 'parentTaskId': parentTaskId,
       if (notificationMinutesBefore != null) 'notificationMinutesBefore': notificationMinutesBefore,
+      'subtasks': subtasks.map((st) => st.toMap()).toList(),
     };
   }
   
@@ -85,6 +132,7 @@ class Task {
     DateTime? repeatEndDate,
     String? parentTaskId,
     int? notificationMinutesBefore,
+    List<SubTask>? subtasks,
   }) {
     return Task(
       id: id,
@@ -100,6 +148,7 @@ class Task {
       repeatEndDate: repeatEndDate ?? this.repeatEndDate,
       parentTaskId: parentTaskId ?? this.parentTaskId,
       notificationMinutesBefore: notificationMinutesBefore ?? this.notificationMinutesBefore,
+      subtasks: subtasks ?? this.subtasks,
     );
   }
 }

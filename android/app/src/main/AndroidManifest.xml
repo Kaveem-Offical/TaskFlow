@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
-        android:label="taskflow_suite"
+        android:label="TaskFlow"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
@@ -40,6 +40,15 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/productivity_widget_info" />
+        </receiver>
+
+        <receiver android:name=".QuickActionWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_action_widget_info" />
         </receiver>
 
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />

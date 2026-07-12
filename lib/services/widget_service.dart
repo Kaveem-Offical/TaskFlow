@@ -14,6 +14,13 @@ class WidgetService {
     List<FocusSession> sessions,
   ) async {
     try {
+      final activeTasksCount = tasks.where((t) => !t.isCompleted).length;
+      await HomeWidget.saveWidgetData(
+        'task_count_summary',
+        '$activeTasksCount Active Tasks • + Tap to Add',
+      );
+      await HomeWidget.saveWidgetData('pomodoro_status', '25:00 Focus Ready');
+
       await HomeWidget.renderFlutterWidget(
         _FocusDistributionWidget(tasks: tasks, sessions: sessions),
         logicalSize: const Size(800, 400),
@@ -26,10 +33,36 @@ class WidgetService {
         qualifiedAndroidName: 'com.example.taskflow_suite.ProductivityWidgetProvider',
         iOSName: 'ProductivityWidget',
       );
+
+      await HomeWidget.updateWidget(
+        name: 'QuickActionWidgetProvider',
+        androidName: 'QuickActionWidgetProvider',
+        qualifiedAndroidName: 'com.example.taskflow_suite.QuickActionWidgetProvider',
+      );
     } catch (e, stack) {
       debugPrint('WidgetService.updateWidget error: $e');
       debugPrintStack(stackTrace: stack, label: 'WidgetService.updateWidget');
       // Do NOT rethrow — caller in root_screen is fire-and-forget (no await/catch)
+    }
+  }
+
+  static Future<void> updateQuickAction({
+    required String pomodoroStatus,
+    required int activeTasksCount,
+  }) async {
+    try {
+      await HomeWidget.saveWidgetData('pomodoro_status', pomodoroStatus);
+      await HomeWidget.saveWidgetData(
+        'task_count_summary',
+        '$activeTasksCount Active Tasks • + Tap to Add',
+      );
+      await HomeWidget.updateWidget(
+        name: 'QuickActionWidgetProvider',
+        androidName: 'QuickActionWidgetProvider',
+        qualifiedAndroidName: 'com.example.taskflow_suite.QuickActionWidgetProvider',
+      );
+    } catch (e) {
+      debugPrint('WidgetService.updateQuickAction error: $e');
     }
   }
 }

@@ -36,7 +36,7 @@ class TaskFlowApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
-      title: 'TaskFlow Productivity Suite',
+      title: 'TaskFlow',
       themeMode: themeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

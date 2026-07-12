@@ -16,6 +16,7 @@ import 'dart:async';
 import 'package:home_widget/home_widget.dart';
 import 'settings_screen.dart';
 import '../services/widget_service.dart';
+import '../services/notification_service.dart';
 
 class RootScreen extends ConsumerStatefulWidget {
   const RootScreen({super.key});
@@ -24,7 +25,7 @@ class RootScreen extends ConsumerStatefulWidget {
   ConsumerState<RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends ConsumerState<RootScreen> {
+class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObserver {
   final List<Widget> _screens = [
     const TasksScreen(),
     const CalendarScreen(),
@@ -41,6 +42,8 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    NotificationService().clearDeliveredNotifications();
     _listenToWidgetClicks();
   }
 
@@ -61,15 +64,33 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   }
 
   void _handleWidgetClick(Uri uri) {
-    if (uri.host == 'insights' || uri.path.contains('insights') || uri.toString().contains('insights')) {
+    final uriStr = uri.toString();
+    if (uri.host == 'insights' || uriStr.contains('insights')) {
       ref.read(navigationProvider.notifier).setIndex(3);
+    } else if (uri.host == 'focus' || uriStr.contains('focus')) {
+      ref.read(navigationProvider.notifier).setIndex(2);
+    } else if (uri.host == 'add_task' || uriStr.contains('add_task')) {
+      ref.read(navigationProvider.notifier).setIndex(0);
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          showTaskModal(context, ref, null);
+        }
+      });
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _widgetClickSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationService().clearDeliveredNotifications();
+    }
   }
 
   void _refreshWidget() {

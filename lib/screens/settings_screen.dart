@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/notification_service.dart';
 import '../widgets/premium/premium_card.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -190,6 +191,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuart),
+
+          const SizedBox(height: 12),
+
+          PremiumCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(LucideIcons.send, color: theme.colorScheme.primary, size: 20),
+              ),
+              title: Text('Send Test Notification', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              subtitle: Text('Verify notification alerts work on this device', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              onTap: () async {
+                HapticFeedback.mediumImpact();
+                await NotificationService().showTestNotification();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(LucideIcons.bellRing, size: 18, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text('Test notification sent! Check your notification center.'),
+                        ],
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              },
+            ),
+          ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuart),
 
           const SizedBox(height: 32),
 

@@ -1,6 +1,6 @@
 {
-    "name": "taskflow_suite",
-    "short_name": "taskflow_suite",
+    "name": "TaskFlow",
+    "short_name": "TaskFlow",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

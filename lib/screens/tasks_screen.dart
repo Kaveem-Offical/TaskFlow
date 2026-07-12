@@ -600,9 +600,73 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                             LucideIcons.calendar,
                             theme,
                             isOverdue: isOverdue && !task.isCompleted,
-                          )
+                          ),
+                        if (task.subtasks.isNotEmpty)
+                          _buildTimeBadge(
+                            '${task.subtasks.where((s) => s.isCompleted).length}/${task.subtasks.length}',
+                            LucideIcons.listTodo,
+                            theme,
+                          ),
                       ],
                     ),
+                    if (task.subtasks.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Column(
+                        children: task.subtasks.map((subtask) {
+                          return InkWell(
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              final updatedSubtasks = task.subtasks.map((s) {
+                                if (s.id == subtask.id) {
+                                  return s.copyWith(isCompleted: !s.isCompleted);
+                                }
+                                return s;
+                              }).toList();
+                              ref.read(taskRepositoryProvider).updateTask(
+                                task.copyWith(subtasks: updatedSubtasks),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    width: 16,
+                                    height: 16,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(5),
+                                      border: Border.all(
+                                        color: subtask.isCompleted ? theme.colorScheme.primary : theme.colorScheme.outline,
+                                        width: 1.5,
+                                      ),
+                                      color: subtask.isCompleted ? theme.colorScheme.primary : Colors.transparent,
+                                    ),
+                                    child: subtask.isCompleted
+                                        ? Icon(LucideIcons.check, size: 11, color: theme.colorScheme.onPrimary)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      subtask.title,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 12,
+                                        color: subtask.isCompleted
+                                            ? theme.colorScheme.outline
+                                            : theme.colorScheme.onSurfaceVariant,
+                                        decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -680,6 +744,8 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
   TimeOfDay? startTime = existingTask?.startTime != null ? TimeOfDay.fromDateTime(existingTask!.startTime!) : null;
   TimeOfDay? endTime = existingTask?.endTime != null ? TimeOfDay.fromDateTime(existingTask!.endTime!) : null;
   int? notificationMinutesBefore = existingTask?.notificationMinutesBefore ?? 0;
+  List<SubTask> subtasks = List.from(existingTask?.subtasks ?? []);
+  final TextEditingController subtaskController = TextEditingController();
   
   showModalBottomSheet(
     context: context,
@@ -757,6 +823,158 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                           hintText: 'Description (optional)',
                           controller: TextEditingController(text: description)..selection = TextSelection.fromPosition(TextPosition(offset: description.length)),
                           onChanged: (val) => description = val,
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              subtasks.isEmpty ? 'Subtasks' : 'Subtasks (${subtasks.where((s) => s.isCompleted).length}/${subtasks.length})',
+                              style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            if (subtasks.isNotEmpty)
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: () {
+                                  setModalState(() => subtasks.clear());
+                                },
+                                child: Text('Clear all', style: TextStyle(fontSize: 12, color: theme.colorScheme.error)),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (subtasks.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Column(
+                              children: subtasks.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final st = entry.value;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            subtasks[idx] = st.copyWith(isCompleted: !st.isCompleted);
+                                          });
+                                        },
+                                        child: Container(
+                                          width: 18,
+                                          height: 18,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(5),
+                                            border: Border.all(
+                                              color: st.isCompleted ? theme.colorScheme.primary : theme.colorScheme.outline,
+                                              width: 1.5,
+                                            ),
+                                            color: st.isCompleted ? theme.colorScheme.primary : Colors.transparent,
+                                          ),
+                                          child: st.isCompleted
+                                              ? Icon(LucideIcons.check, size: 11, color: theme.colorScheme.onPrimary)
+                                              : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          st.title,
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            fontSize: 13,
+                                            color: st.isCompleted
+                                                ? theme.colorScheme.outline
+                                                : theme.colorScheme.onSurface,
+                                            decoration: st.isCompleted ? TextDecoration.lineThrough : null,
+                                          ),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        onTap: () {
+                                          setModalState(() {
+                                            subtasks.removeAt(idx);
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4.0),
+                                          child: Icon(LucideIcons.x, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        Container(
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.15)),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 12),
+                              Icon(LucideIcons.plus, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: subtaskController,
+                                  style: theme.textTheme.bodyMedium?.copyWith(fontSize: 13),
+                                  decoration: InputDecoration(
+                                    hintText: 'Add a subtask...',
+                                    hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                                      fontSize: 13,
+                                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                    ),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  onSubmitted: (val) {
+                                    if (val.trim().isNotEmpty) {
+                                      setModalState(() {
+                                        subtasks.add(SubTask(
+                                          id: DateTime.now().microsecondsSinceEpoch.toString(),
+                                          title: val.trim(),
+                                        ));
+                                        subtaskController.clear();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                iconSize: 18,
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                constraints: const BoxConstraints(),
+                                icon: Icon(LucideIcons.arrowRight, color: theme.colorScheme.primary),
+                                onPressed: () {
+                                  final val = subtaskController.text.trim();
+                                  if (val.isNotEmpty) {
+                                    setModalState(() {
+                                      subtasks.add(SubTask(
+                                        id: DateTime.now().microsecondsSinceEpoch.toString(),
+                                        title: val,
+                                      ));
+                                      subtaskController.clear();
+                                    });
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 24),
                         Text('Category', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
@@ -990,6 +1208,7 @@ void showTaskModal(BuildContext context, WidgetRef ref, Task? existingTask) {
                                 startTime: fullStartTime,
                                 endTime: fullEndTime,
                                 notificationMinutesBefore: notificationMinutesBefore,
+                                subtasks: subtasks,
                               );
 
                               if (existingTask == null) {
