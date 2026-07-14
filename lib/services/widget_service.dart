@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
@@ -23,6 +24,7 @@ class _DeadlineItem {
 
 class WidgetService {
   static Future<void> init() async {
+    if (kIsWeb) return;
     await HomeWidget.setAppGroupId('group.com.example.taskflow_suite');
   }
 
@@ -31,6 +33,7 @@ class WidgetService {
     List<FocusSession> sessions, [
     List<Event> events = const [],
   ]) async {
+    if (kIsWeb) return;
     try {
       final activeTasksCount = tasks.where((t) => !t.isCompleted).length;
       await HomeWidget.saveWidgetData(
@@ -85,7 +88,9 @@ class WidgetService {
   static Future<void> setHideCountdownTaskName(bool hide) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hide_countdown_task_name', hide);
-    await HomeWidget.saveWidgetData('hide_countdown_task_name', hide);
+    if (!kIsWeb) {
+      await HomeWidget.saveWidgetData('hide_countdown_task_name', hide);
+    }
   }
 
   static Future<bool> getHideCountdownTaskName() async {
@@ -226,6 +231,7 @@ class WidgetService {
     required String pomodoroStatus,
     required int activeTasksCount,
   }) async {
+    if (kIsWeb) return;
     try {
       await HomeWidget.saveWidgetData('pomodoro_status', pomodoroStatus);
       await HomeWidget.saveWidgetData(

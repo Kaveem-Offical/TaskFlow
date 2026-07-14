@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -16,6 +17,7 @@ class NotificationService {
   bool _isInitialized = false;
 
   Future<void> init() async {
+    if (kIsWeb) return;
     if (_isInitialized) return;
 
     try {
@@ -66,6 +68,7 @@ class NotificationService {
   }
 
   Future<bool> requestPermissions() async {
+    if (kIsWeb) return false;
     bool granted = false;
 
     try {
@@ -109,6 +112,7 @@ class NotificationService {
   }
 
   Future<void> showTestNotification() async {
+    if (kIsWeb) return;
     if (!_isInitialized) {
       await init();
     }
@@ -143,6 +147,7 @@ class NotificationService {
   }
 
   Future<void> scheduleTaskNotification(Task task) async {
+    if (kIsWeb) return;
     // If completed or reminder disabled (-1 or null), cancel any scheduled notification
     if (task.isCompleted || task.notificationMinutesBefore == null || task.notificationMinutesBefore == -1) {
       await cancelNotification(task.id.hashCode);
@@ -229,6 +234,7 @@ class NotificationService {
   }
 
   Future<void> scheduleEventNotification(Event event) async {
+    if (kIsWeb) return;
     if (event.notificationMinutesBefore == null || event.notificationMinutesBefore == -1) {
       await cancelNotification(event.id.hashCode);
       return;
@@ -308,10 +314,12 @@ class NotificationService {
   }
 
   Future<void> cancelNotification(int id) async {
+    if (kIsWeb) return;
     await flutterLocalNotificationsPlugin.cancel(id: id);
   }
 
   Future<void> clearDeliveredNotifications() async {
+    if (kIsWeb) return;
     try {
       final activeNotifications = await flutterLocalNotificationsPlugin.getActiveNotifications();
       for (final active in activeNotifications) {
