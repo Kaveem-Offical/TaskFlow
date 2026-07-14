@@ -140,7 +140,7 @@ class NotificationService {
 
     await flutterLocalNotificationsPlugin.show(
       id: 99999,
-      title: 'TaskFlow Notification Working 🎉',
+      title: 'Kronom Notification Working 🎉',
       body: 'You will receive reminders for your scheduled tasks!',
       notificationDetails: details,
     );

@@ -23,20 +23,20 @@ void main() async {
   
   runApp(
     const ProviderScope(
-      child: TaskFlowApp(),
+      child: KronomApp(),
     ),
   );
 }
 
-class TaskFlowApp extends ConsumerWidget {
-  const TaskFlowApp({super.key});
+class KronomApp extends ConsumerWidget {
+  const KronomApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
-      title: 'TaskFlow',
+      title: 'Kronom',
       themeMode: themeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

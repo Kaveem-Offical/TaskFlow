@@ -1,11 +1,11 @@
 {
-    "name": "TaskFlow",
-    "short_name": "TaskFlow",
+    "name": "Kronom",
+    "short_name": "Kronom",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Kronom — Productivity, Deadlines & Pomodoro Focus Suite.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
