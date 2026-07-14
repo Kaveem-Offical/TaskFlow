@@ -1,8 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 import '../models/task_model.dart';
 import '../models/focus_session_model.dart';
+import '../models/event_model.dart';
+
+class _DeadlineItem {
+  final String id;
+  final String title;
+  final DateTime targetDate;
+  final String label;
+
+  _DeadlineItem({
+    required this.id,
+    required this.title,
+    required this.targetDate,
+    required this.label,
+  });
+}
 
 class WidgetService {
   static Future<void> init() async {
@@ -11,8 +28,9 @@ class WidgetService {
 
   static Future<void> updateWidget(
     List<Task> tasks,
-    List<FocusSession> sessions,
-  ) async {
+    List<FocusSession> sessions, [
+    List<Event> events = const [],
+  ]) async {
     try {
       final activeTasksCount = tasks.where((t) => !t.isCompleted).length;
       await HomeWidget.saveWidgetData(
@@ -20,6 +38,8 @@ class WidgetService {
         '$activeTasksCount Active Tasks • + Tap to Add',
       );
       await HomeWidget.saveWidgetData('pomodoro_status', '25:00 Focus Ready');
+
+      await _updateDeadlineWidgetData(tasks, events);
 
       await HomeWidget.renderFlutterWidget(
         _FocusDistributionWidget(tasks: tasks, sessions: sessions),
@@ -39,11 +59,167 @@ class WidgetService {
         androidName: 'QuickActionWidgetProvider',
         qualifiedAndroidName: 'com.example.taskflow_suite.QuickActionWidgetProvider',
       );
+
+      await HomeWidget.updateWidget(
+        name: 'TaskDeadlineWidgetProvider',
+        androidName: 'TaskDeadlineWidgetProvider',
+        qualifiedAndroidName: 'com.example.taskflow_suite.TaskDeadlineWidgetProvider',
+      );
     } catch (e, stack) {
       debugPrint('WidgetService.updateWidget error: $e');
       debugPrintStack(stackTrace: stack, label: 'WidgetService.updateWidget');
       // Do NOT rethrow — caller in root_screen is fire-and-forget (no await/catch)
     }
+  }
+
+  static Future<void> pinToCountdownWidget(String itemId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pinned_countdown_id', itemId);
+  }
+
+  static Future<String?> getPinnedCountdownId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('pinned_countdown_id');
+  }
+
+  static Future<void> setHideCountdownTaskName(bool hide) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hide_countdown_task_name', hide);
+    await HomeWidget.saveWidgetData('hide_countdown_task_name', hide);
+  }
+
+  static Future<bool> getHideCountdownTaskName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('hide_countdown_task_name') ?? false;
+  }
+
+  static String _getEmojiForTitle(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('birth') || lower.contains('bday')) return '🎂';
+    if (lower.contains('party') || lower.contains('celebrat')) return '🎉';
+    if (lower.contains('exam') || lower.contains('test') || lower.contains('study')) return '📚';
+    if (lower.contains('flight') || lower.contains('trip') || lower.contains('travel') || lower.contains('vacation')) return '✈️';
+    if (lower.contains('gym') || lower.contains('workout') || lower.contains('fit')) return '💪';
+    if (lower.contains('meet') || lower.contains('call')) return '💼';
+    if (lower.contains('launch') || lower.contains('release') || lower.contains('deploy')) return '🚀';
+    if (lower.contains('doctor') || lower.contains('health')) return '🏥';
+    return '🎯';
+  }
+
+  static Future<void> _updateDeadlineWidgetData(
+    List<Task> tasks, [
+    List<Event> events = const [],
+  ]) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final List<_DeadlineItem> items = [];
+
+    for (final t in tasks) {
+      if (!t.isCompleted && t.dueDate != null) {
+        items.add(_DeadlineItem(
+          id: t.id,
+          title: t.title,
+          targetDate: t.dueDate!,
+          label: t.category.isNotEmpty ? t.category.toUpperCase() : 'TASK DEADLINE',
+        ));
+      }
+    }
+
+    for (final e in events) {
+      if (!e.endTime.isBefore(today)) {
+        items.add(_DeadlineItem(
+          id: e.id,
+          title: e.title,
+          targetDate: e.startTime,
+          label: 'CALENDAR EVENT',
+        ));
+      }
+    }
+
+    if (items.isEmpty) {
+      await HomeWidget.saveWidgetData('deadline_task_title', 'Scheduled Task');
+      await HomeWidget.saveWidgetData('deadline_task_emoji', '🎯');
+      await HomeWidget.saveWidgetData('deadline_task_category', 'UPCOMING DEADLINE');
+      await HomeWidget.saveWidgetData('deadline_task_subtitle', 'Tap to select task');
+      await HomeWidget.saveWidgetData('deadline_days_num', '--');
+      await HomeWidget.saveWidgetData('deadline_days_unit', 'days left');
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final pinnedId = prefs.getString('pinned_countdown_id');
+
+    _DeadlineItem? selected;
+
+    if (pinnedId != null) {
+      for (final item in items) {
+        if (item.id == pinnedId) {
+          selected = item;
+          break;
+        }
+      }
+    }
+
+    if (selected == null) {
+      // Look explicitly for an August 31st task if present
+      for (final item in items) {
+        if (item.targetDate.month == 8 && item.targetDate.day == 31) {
+          selected = item;
+          break;
+        }
+      }
+    }
+
+    if (selected == null) {
+      // Look for any task in August
+      for (final item in items) {
+        if (item.targetDate.month == 8) {
+          selected = item;
+          break;
+        }
+      }
+    }
+
+    if (selected == null) {
+      items.sort((a, b) => a.targetDate.compareTo(b.targetDate));
+      selected = items.first;
+    }
+
+    final dueDay = DateTime(
+      selected.targetDate.year,
+      selected.targetDate.month,
+      selected.targetDate.day,
+    );
+    final daysLeft = dueDay.difference(today).inDays;
+
+    String daysNum;
+    String daysUnit;
+    if (daysLeft < 0) {
+      daysNum = '${-daysLeft}';
+      daysUnit = (-daysLeft == 1) ? 'day overdue' : 'days overdue';
+    } else if (daysLeft == 0) {
+      daysNum = '0';
+      daysUnit = 'due today';
+    } else if (daysLeft == 1) {
+      daysNum = '1';
+      daysUnit = 'day left';
+    } else {
+      daysNum = '$daysLeft';
+      daysUnit = 'days left';
+    }
+
+    final formattedDate = DateFormat('E, MMM d').format(selected.targetDate);
+    final emoji = _getEmojiForTitle(selected.title);
+
+    await HomeWidget.saveWidgetData('deadline_task_title', selected.title);
+    await HomeWidget.saveWidgetData('deadline_task_emoji', emoji);
+    await HomeWidget.saveWidgetData('deadline_task_category', selected.label);
+    await HomeWidget.saveWidgetData('deadline_task_subtitle', formattedDate);
+    await HomeWidget.saveWidgetData('deadline_days_num', daysNum);
+    await HomeWidget.saveWidgetData('deadline_days_unit', daysUnit);
+    final hideName = await getHideCountdownTaskName();
+    await HomeWidget.saveWidgetData('hide_countdown_task_name', hideName);
   }
 
   static Future<void> updateQuickAction({

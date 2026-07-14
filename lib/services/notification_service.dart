@@ -4,6 +4,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/task_model.dart';
+import '../models/event_model.dart';
+
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -223,6 +225,85 @@ class NotificationService {
       );
     } catch (e) {
       print('NotificationService schedule error: $e');
+    }
+  }
+
+  Future<void> scheduleEventNotification(Event event) async {
+    if (event.notificationMinutesBefore == null || event.notificationMinutesBefore == -1) {
+      await cancelNotification(event.id.hashCode);
+      return;
+    }
+
+    final DateTime targetTime = event.startTime;
+    final int minutesBefore = event.notificationMinutesBefore ?? 0;
+    DateTime scheduledDateTime = targetTime.subtract(Duration(minutes: minutesBefore));
+
+    if (scheduledDateTime.isBefore(DateTime.now())) {
+      if (targetTime.isAfter(DateTime.now())) {
+        scheduledDateTime = DateTime.now().add(const Duration(seconds: 5));
+      } else {
+        return;
+      }
+    }
+
+    if (!_isInitialized) {
+      await init();
+    }
+    await requestPermissions();
+
+    final androidDetails = const AndroidNotificationDetails(
+      'taskflow_task_channel',
+      'Task Reminders',
+      channelDescription: 'Notifications for task start times and reminders',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    final darwinDetails = const DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    await cancelNotification(event.id.hashCode);
+
+    String title;
+    String body;
+    if (minutesBefore > 0) {
+      String timeLabel;
+      if (minutesBefore < 60) {
+        timeLabel = '$minutesBefore minutes';
+      } else if (minutesBefore == 60) {
+        timeLabel = '1 hour';
+      } else if (minutesBefore == 1440) {
+        timeLabel = '1 day';
+      } else {
+        timeLabel = '$minutesBefore minutes';
+      }
+      title = 'Upcoming Event Reminder 🗓️';
+      body = 'Your event "${event.title}" starts in $timeLabel.';
+    } else {
+      title = 'Event Starting Now! 🗓️';
+      body = 'Your event "${event.title}" is starting now.';
+    }
+
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id: event.id.hashCode,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(scheduledDateTime, tz.local),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (e) {
+      print('NotificationService scheduleEventNotification error: $e');
     }
   }
 

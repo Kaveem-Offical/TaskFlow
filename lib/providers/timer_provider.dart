@@ -44,27 +44,50 @@ class TimerNotifier extends Notifier<TimerState> {
     return TimerState(remainingSeconds: 25 * 60, isRunning: false, initialDurationMinutes: 25);
   }
 
-  void selectTask(String? taskId) {
+  void selectTask(String? taskId) async {
     state = state.copyWith(selectedTaskId: taskId);
+    final prefs = await SharedPreferences.getInstance();
+    if (taskId != null) {
+      prefs.setString('timer_selected_task_id', taskId);
+    } else {
+      prefs.remove('timer_selected_task_id');
+    }
   }
 
   Future<void> _loadState() async {
     final prefs = await SharedPreferences.getInstance();
     final endTime = prefs.getInt('timer_end_time');
+    final startTime = prefs.getInt('timer_start_time');
     final duration = prefs.getInt('timer_duration') ?? 25;
+    final savedTaskId = prefs.getString('timer_selected_task_id');
+    final taskId = (savedTaskId != null && savedTaskId.isNotEmpty) ? savedTaskId : state.selectedTaskId;
     
     if (endTime != null) {
       final now = DateTime.now().millisecondsSinceEpoch;
       if (endTime > now) {
         final remaining = ((endTime - now) / 1000).round();
-        state = TimerState(remainingSeconds: remaining, isRunning: true, initialDurationMinutes: duration, selectedTaskId: state.selectedTaskId);
+        state = TimerState(remainingSeconds: remaining, isRunning: true, initialDurationMinutes: duration, selectedTaskId: taskId);
         _startTimerTick();
       } else {
         prefs.remove('timer_end_time');
-        state = TimerState(remainingSeconds: duration * 60, isRunning: false, initialDurationMinutes: duration, selectedTaskId: state.selectedTaskId);
+        prefs.remove('timer_start_time');
+        prefs.remove('timer_selected_task_id');
+        
+        final sessionStartTime = startTime != null
+            ? DateTime.fromMillisecondsSinceEpoch(startTime)
+            : DateTime.fromMillisecondsSinceEpoch(endTime).subtract(Duration(minutes: duration));
+            
+        ref.read(focusSessionRepositoryProvider).addFocusSession(FocusSession(
+          id: '',
+          durationMinutes: duration,
+          timestamp: sessionStartTime,
+          linkedTaskId: taskId,
+        ));
+        
+        state = TimerState(remainingSeconds: duration * 60, isRunning: false, initialDurationMinutes: duration, selectedTaskId: taskId);
       }
     } else {
-      state = state.copyWith(initialDurationMinutes: duration, remainingSeconds: duration * 60);
+      state = state.copyWith(initialDurationMinutes: duration, remainingSeconds: duration * 60, selectedTaskId: taskId);
     }
   }
 
@@ -79,9 +102,16 @@ class TimerNotifier extends Notifier<TimerState> {
     if (state.isRunning || state.remainingSeconds <= 0) return;
     
     final prefs = await SharedPreferences.getInstance();
-    final endTime = DateTime.now().millisecondsSinceEpoch + (state.remainingSeconds * 1000);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final endTime = nowMs + (state.remainingSeconds * 1000);
     prefs.setInt('timer_end_time', endTime);
+    prefs.setInt('timer_start_time', nowMs);
     prefs.setInt('timer_duration', state.initialDurationMinutes);
+    if (state.selectedTaskId != null) {
+      prefs.setString('timer_selected_task_id', state.selectedTaskId!);
+    } else {
+      prefs.remove('timer_selected_task_id');
+    }
     
     state = state.copyWith(isRunning: true);
     _startTimerTick();
@@ -152,24 +182,33 @@ class TimerNotifier extends Notifier<TimerState> {
     _timer?.cancel();
     state = state.copyWith(isRunning: false);
     final prefs = await SharedPreferences.getInstance();
-    prefs.remove('timer_end_time'); 
+    prefs.remove('timer_end_time');
+    prefs.remove('timer_start_time');
   }
 
   void reset() async {
     _timer?.cancel();
     final prefs = await SharedPreferences.getInstance();
     prefs.remove('timer_end_time');
+    prefs.remove('timer_start_time');
     state = TimerState(remainingSeconds: state.initialDurationMinutes * 60, isRunning: false, initialDurationMinutes: state.initialDurationMinutes, selectedTaskId: state.selectedTaskId);
   }
 
   void _onComplete({int? overrideMinutes}) async {
     final prefs = await SharedPreferences.getInstance();
+    final startTimeMs = prefs.getInt('timer_start_time');
     prefs.remove('timer_end_time');
+    prefs.remove('timer_start_time');
+    
+    final loggedMinutes = overrideMinutes ?? state.initialDurationMinutes;
+    final sessionStartTime = startTimeMs != null
+        ? DateTime.fromMillisecondsSinceEpoch(startTimeMs)
+        : DateTime.now().subtract(Duration(minutes: loggedMinutes));
     
     ref.read(focusSessionRepositoryProvider).addFocusSession(FocusSession(
       id: '',
-      durationMinutes: overrideMinutes ?? state.initialDurationMinutes,
-      timestamp: DateTime.now(),
+      durationMinutes: loggedMinutes,
+      timestamp: sessionStartTime,
       linkedTaskId: state.selectedTaskId,
     ));
     

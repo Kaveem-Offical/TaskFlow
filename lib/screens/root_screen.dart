@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/providers.dart';
 import '../models/focus_session_model.dart';
 import '../models/task_model.dart';
+import '../models/event_model.dart';
 import 'tasks_screen.dart';
 import 'calendar_screen.dart';
 import 'focus_screen.dart';
@@ -37,6 +38,7 @@ class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObse
 
   List<Task> _latestTasks = [];
   List<FocusSession> _latestSessions = [];
+  List<Event> _latestEvents = [];
   StreamSubscription<Uri?>? _widgetClickSub;
 
   @override
@@ -76,6 +78,10 @@ class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObse
           showTaskModal(context, ref, null);
         }
       });
+    } else if (uri.host == 'tasks' || uriStr.contains('tasks')) {
+      ref.read(navigationProvider.notifier).setIndex(0);
+    } else if (uri.host == 'calendar' || uriStr.contains('calendar') || uri.host == 'deadline' || uriStr.contains('deadline')) {
+      ref.read(navigationProvider.notifier).setIndex(1);
     }
   }
 
@@ -94,7 +100,7 @@ class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObse
   }
 
   void _refreshWidget() {
-    WidgetService.updateWidget(_latestTasks, _latestSessions);
+    WidgetService.updateWidget(_latestTasks, _latestSessions, _latestEvents);
   }
 
   @override
@@ -102,7 +108,7 @@ class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObse
     final currentIndex = ref.watch(navigationProvider);
     final theme = Theme.of(context);
 
-    // Listen to tasks + focus sessions and refresh widget whenever either changes
+    // Listen to tasks + focus sessions + events and refresh widget whenever any changes
     ref.listen(tasksStreamProvider, (previous, next) {
       if (next.hasValue && next.value != null) {
         _latestTasks = next.value!;
@@ -113,6 +119,13 @@ class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObse
     ref.listen(focusSessionsStreamProvider, (previous, next) {
       if (next.hasValue && next.value != null) {
         _latestSessions = next.value!;
+        _refreshWidget();
+      }
+    });
+
+    ref.listen(eventsStreamProvider, (previous, next) {
+      if (next.hasValue && next.value != null) {
+        _latestEvents = next.value!;
         _refreshWidget();
       }
     });

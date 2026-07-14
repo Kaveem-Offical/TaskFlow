@@ -6,9 +6,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/providers.dart';
 import '../models/task_model.dart';
+import '../models/event_model.dart';
 import '../widgets/premium/premium_card.dart';
 import '../widgets/premium/premium_button.dart';
 import '../widgets/premium/premium_text_field.dart';
+import '../widgets/task_deadline_countdown_widget.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -47,6 +49,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksStreamProvider);
+    final eventsAsync = ref.watch(eventsStreamProvider);
     final categories = ref.watch(categoriesProvider);
     final tabs = ['Today', 'Next 7 Days', 'All', ...categories];
 
@@ -57,6 +60,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         child: Column(
           children: [
             _buildHeader(),
+            tasksAsync.maybeWhen(
+              data: (tasks) {
+                final events = eventsAsync.maybeWhen(
+                  data: (e) => e,
+                  orElse: () => <Event>[],
+                );
+                return TaskDeadlineCountdownWidget(
+                  tasks: tasks,
+                  events: events,
+                  onTap: () => showTaskModal(context, ref, null),
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
             _buildTabs(tabs),
             Expanded(
               child: tasksAsync.when(

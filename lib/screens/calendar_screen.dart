@@ -47,8 +47,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     // Add events on this day
     dayItems.addAll(events.where((e) {
-      return DateUtils.isSameDay(e.startTime, day);
+      return DateUtils.isSameDay(e.startTime, day) ||
+          DateUtils.isSameDay(e.endTime, day) ||
+          (e.startTime.isBefore(day) && e.endTime.isAfter(day));
     }));
+
 
     // Sort items by time if available
     dayItems.sort((a, b) {
@@ -161,9 +164,39 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   void _showEventModal(BuildContext context, WidgetRef ref, Event? existingEvent) {
     String title = existingEvent?.title ?? '';
+    String description = existingEvent?.description ?? '';
+    DateTime eventDate = existingEvent?.startTime ?? (_selectedDay ?? DateTime.now());
     TimeOfDay startTime = existingEvent != null ? TimeOfDay.fromDateTime(existingEvent.startTime) : TimeOfDay.now();
-    TimeOfDay endTime = existingEvent != null ? TimeOfDay.fromDateTime(existingEvent.endTime) : TimeOfDay.now().replacing(hour: (TimeOfDay.now().hour + 1) % 24);
-    
+    TimeOfDay endTime = existingEvent != null
+        ? TimeOfDay.fromDateTime(existingEvent.endTime)
+        : TimeOfDay.now().replacing(hour: (TimeOfDay.now().hour + 1) % 24);
+    String? selectedColorHex = existingEvent?.colorHex ?? '#3f51b5';
+    int? selectedReminderMinutes = existingEvent?.notificationMinutesBefore;
+
+    final List<Map<String, dynamic>> colorBlocks = [
+      {'label': 'Indigo', 'hex': '#3f51b5', 'color': const Color(0xFF3f51b5)},
+      {'label': 'Emerald', 'hex': '#33b679', 'color': const Color(0xFF33b679)},
+      {'label': 'Ocean', 'hex': '#039be5', 'color': const Color(0xFF039be5)},
+      {'label': 'Crimson', 'hex': '#d50000', 'color': const Color(0xFFd50000)},
+      {'label': 'Royal Blue', 'hex': '#4285f4', 'color': const Color(0xFF4285f4)},
+      {'label': 'Coral', 'hex': '#e67c73', 'color': const Color(0xFFe67c73)},
+      {'label': 'Purple', 'hex': '#8e24aa', 'color': const Color(0xFF8e24aa)},
+      {'label': 'Amber', 'hex': '#f4511e', 'color': const Color(0xFFf4511e)},
+      {'label': 'Lavender', 'hex': '#b39ddb', 'color': const Color(0xFFb39ddb)},
+      {'label': 'Teal', 'hex': '#00897b', 'color': const Color(0xFF00897b)},
+    ];
+
+    final List<Map<String, dynamic>> reminderOptions = [
+      {'label': 'None', 'minutes': null},
+      {'label': 'At event time', 'minutes': 0},
+      {'label': '5 min before', 'minutes': 5},
+      {'label': '10 min before', 'minutes': 10},
+      {'label': '15 min before', 'minutes': 15},
+      {'label': '30 min before', 'minutes': 30},
+      {'label': '1 hr before', 'minutes': 60},
+      {'label': '1 day before', 'minutes': 1440},
+    ];
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -200,69 +233,227 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     const SizedBox(height: 16),
                     PremiumTextField(
                       hintText: 'Event Title',
-                      controller: TextEditingController(text: title)..selection = TextSelection.fromPosition(TextPosition(offset: title.length)),
+                      controller: TextEditingController(text: title)
+                        ..selection = TextSelection.fromPosition(TextPosition(offset: title.length)),
                       onChanged: (val) => title = val,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+                    PremiumTextField(
+                      hintText: 'Event Description (optional)',
+                      controller: TextEditingController(text: description)
+                        ..selection = TextSelection.fromPosition(TextPosition(offset: description.length)),
+                      onChanged: (val) => description = val,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Date & Time',
+                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
                     PremiumCard(
                       padding: const EdgeInsets.all(0),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: ListTile(
-                              title: Text('Start: ${startTime.format(context)}', style: theme.textTheme.bodyMedium),
-                              trailing: Icon(LucideIcons.clock, size: 20, color: theme.colorScheme.outline),
-                              onTap: () async {
-                                final picked = await showTimePicker(context: context, initialTime: startTime);
-                                if (picked != null) {
-                                  setModalState(() => startTime = picked);
-                                }
-                              },
+                          ListTile(
+                            leading: Icon(LucideIcons.calendar, color: theme.colorScheme.primary, size: 20),
+                            title: Text(
+                              DateFormat('E, MMM d, yyyy').format(eventDate),
+                              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                             ),
+                            trailing: Icon(LucideIcons.chevronRight, size: 18, color: theme.colorScheme.outline),
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: eventDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035),
+                              );
+                              if (picked != null) {
+                                setModalState(() => eventDate = picked);
+                              }
+                            },
                           ),
-                          Container(height: 30, width: 1, color: theme.colorScheme.outline),
-                          Expanded(
-                            child: ListTile(
-                              title: Text('End: ${endTime.format(context)}', style: theme.textTheme.bodyMedium),
-                              trailing: Icon(LucideIcons.clock, size: 20, color: theme.colorScheme.outline),
-                              onTap: () async {
-                                final picked = await showTimePicker(context: context, initialTime: endTime);
-                                if (picked != null) {
-                                  setModalState(() => endTime = picked);
-                                }
-                              },
-                            ),
+                          Divider(height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ListTile(
+                                  title: Text('Start: ${startTime.format(context)}', style: theme.textTheme.bodyMedium),
+                                  trailing: Icon(LucideIcons.clock, size: 20, color: theme.colorScheme.outline),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(context: context, initialTime: startTime);
+                                    if (picked != null) {
+                                      setModalState(() => startTime = picked);
+                                    }
+                                  },
+                                ),
+                              ),
+                              Container(height: 30, width: 1, color: theme.colorScheme.outlineVariant),
+                              Expanded(
+                                child: ListTile(
+                                  title: Text('End: ${endTime.format(context)}', style: theme.textTheme.bodyMedium),
+                                  trailing: Icon(LucideIcons.clock, size: 20, color: theme.colorScheme.outline),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(context: context, initialTime: endTime);
+                                    if (picked != null) {
+                                      setModalState(() => endTime = picked);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Color Block',
+                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 48,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: colorBlocks.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (context, idx) {
+                          final block = colorBlocks[idx];
+                          final bool isSelected = selectedColorHex == block['hex'];
+                          final Color color = block['color'] as Color;
+                          return GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setModalState(() => selectedColorHex = block['hex'] as String);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: isSelected ? 44 : 38,
+                              height: isSelected ? 44 : 38,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? theme.colorScheme.onSurface : Colors.transparent,
+                                  width: 2.5,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: color.withValues(alpha: 0.4),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        )
+                                      ]
+                                    : null,
+                              ),
+                              child: isSelected
+                                  ? const Icon(LucideIcons.check, color: Colors.white, size: 18)
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Icon(LucideIcons.bellRing, size: 18, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Reminder Notification',
+                          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: reminderOptions.map((opt) {
+                        final bool isSelected = selectedReminderMinutes == opt['minutes'];
+                        return ChoiceChip(
+                          label: Text(
+                            opt['label'] as String,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: theme.colorScheme.primary,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                          onSelected: (selected) {
+                            HapticFeedback.selectionClick();
+                            setModalState(() {
+                              selectedReminderMinutes = opt['minutes'] as int?;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
                     PremiumButton(
                       onPressed: () {
-                        if (title.isNotEmpty) {
-                          final now = _selectedDay ?? DateTime.now();
-                          final startDateTime = DateTime(now.year, now.month, now.day, startTime.hour, startTime.minute);
-                          final endDateTime = DateTime(now.year, now.month, now.day, endTime.hour, endTime.minute);
-                          
+                        if (title.trim().isNotEmpty) {
+                          final startDateTime = DateTime(
+                            eventDate.year, eventDate.month, eventDate.day, startTime.hour, startTime.minute
+                          );
+                          DateTime endDateTime = DateTime(
+                            eventDate.year, eventDate.month, eventDate.day, endTime.hour, endTime.minute
+                          );
+                          if (endDateTime.isBefore(startDateTime) || endDateTime.isAtSameMomentAs(startDateTime)) {
+                            endDateTime = startDateTime.add(const Duration(hours: 1));
+                          }
+
                           final event = Event(
-                            id: existingEvent?.id ?? '', // Handled by repository if empty
-                            title: title,
+                            id: existingEvent?.id != null && existingEvent!.id.isNotEmpty
+                                ? existingEvent.id
+                                : DateTime.now().millisecondsSinceEpoch.toString(),
+                            title: title.trim(),
+                            description: description.trim().isEmpty ? null : description.trim(),
                             startTime: startDateTime,
                             endTime: endDateTime,
+                            colorHex: selectedColorHex,
+                            notificationMinutesBefore: selectedReminderMinutes,
                           );
 
                           if (existingEvent == null) {
                             ref.read(eventRepositoryProvider).addEvent(event);
+                            setState(() {
+                              _selectedDay = eventDate;
+                              _focusedDay = eventDate;
+                            });
                           } else {
                             ref.read(eventRepositoryProvider).updateEvent(event);
                           }
                           Navigator.pop(context);
+
+                          if (selectedReminderMinutes != null && selectedReminderMinutes != -1) {
+                            final String reminderLabel = selectedReminderMinutes == 0
+                                ? 'at event time'
+                                : '$selectedReminderMinutes minutes before';
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(LucideIcons.bellRing, color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text('Reminder notification set ($reminderLabel)'),
+                                  ],
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         }
                       },
                       label: existingEvent == null ? 'Add Event' : 'Save Changes',
                     ),
                     if (existingEvent != null) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       PremiumButton(
                         isPrimary: false,
                         onPressed: () {
@@ -283,5 +474,4 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
     );
   }
-
 }

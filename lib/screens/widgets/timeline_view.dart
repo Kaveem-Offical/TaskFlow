@@ -1,9 +1,11 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/task_model.dart';
 import '../../models/event_model.dart';
 
 class TimelineViewWidget extends StatefulWidget {
+
   final List<dynamic> items; // Tasks and Events
   final DateTime selectedDay;
   final Function(dynamic) onItemTap;
@@ -165,10 +167,16 @@ class _TimelineViewWidgetState extends State<TimelineViewWidget> {
 
   Widget _buildItemCard(BuildContext context, dynamic item) {
     final String title = item.title;
-    final String subtitle = item is Task ? item.description : 'Event';
+    final String subtitle = item is Task
+        ? item.description
+        : (item is Event && item.description != null && item.description!.isNotEmpty
+            ? item.description!
+            : 'Event');
     final bool isTask = item is Task;
     final bool isCompleted = isTask ? item.isCompleted : false;
-    
+    final bool hasReminder = (item is Event && item.notificationMinutesBefore != null && item.notificationMinutesBefore != -1) ||
+        (item is Task && item.notificationMinutesBefore != null && item.notificationMinutesBefore != -1);
+
     final List<Color> palette = const [
       Color(0xFF7986cb), Color(0xFF33b679), Color(0xFF3f51b5), 
       Color(0xFF0b8043), Color(0xFF039be5), Color(0xFFd50000), 
@@ -177,7 +185,11 @@ class _TimelineViewWidgetState extends State<TimelineViewWidget> {
     ];
     
     final int hash = item.id.hashCode;
-    final Color itemColor = palette[hash.abs() % palette.length];
+    Color itemColor = palette[hash.abs() % palette.length];
+    if (item is Event && item.color != null) {
+      itemColor = item.color!;
+    }
+
     Color bgColor = isTask && isCompleted 
         ? Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)
         : itemColor.withValues(alpha: 0.2);
@@ -196,16 +208,30 @@ class _TimelineViewWidgetState extends State<TimelineViewWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              decoration: isCompleted ? TextDecoration.lineThrough : null,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (hasReminder) ...[
+                const SizedBox(width: 4),
+                Icon(
+                  LucideIcons.bellRing,
+                  size: 13,
+                  color: fgColor,
+                ),
+              ],
+            ],
           ),
           if (subtitle.isNotEmpty) ...[
             const SizedBox(height: 2),
@@ -224,6 +250,7 @@ class _TimelineViewWidgetState extends State<TimelineViewWidget> {
     );
   }
 }
+
 
 class _VerticalGridPainter extends CustomPainter {
   final int startHour;

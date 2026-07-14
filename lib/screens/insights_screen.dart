@@ -1051,9 +1051,11 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
   }
 
   void _showAddFocusRecordModal(BuildContext context, DateTime initialDate) {
-    int durationMinutes = 25;
     DateTime date = initialDate;
-    TimeOfDay time = TimeOfDay.now();
+    final nowDateTime = DateTime.now();
+    final startDefault = nowDateTime.subtract(const Duration(minutes: 45));
+    TimeOfDay startTime = TimeOfDay(hour: startDefault.hour, minute: startDefault.minute);
+    TimeOfDay endTime = TimeOfDay.now();
     String? selectedTaskId;
 
     showModalBottomSheet(
@@ -1066,6 +1068,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             final theme = Theme.of(context);
+            
+            final startDateTime = DateTime(date.year, date.month, date.day, startTime.hour, startTime.minute);
+            var endDateTime = DateTime(date.year, date.month, date.day, endTime.hour, endTime.minute);
+            if (endDateTime.isBefore(startDateTime)) {
+              endDateTime = endDateTime.add(const Duration(days: 1));
+            }
+            final durationMinutes = endDateTime.difference(startDateTime).inMinutes;
+
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -1087,19 +1097,6 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Need to create a basic text field here since PremiumTextField might be custom
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Duration (minutes)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      keyboardType: TextInputType.number,
-                      initialValue: durationMinutes.toString(),
-                      onChanged: (val) {
-                        durationMinutes = int.tryParse(val) ?? 25;
-                      },
-                    ),
-                    const SizedBox(height: 24),
                     Container(
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
@@ -1125,14 +1122,46 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                           ),
                           const Divider(height: 1),
                           ListTile(
-                            title: Text('Time: ${time.format(context)}', style: theme.textTheme.bodyMedium),
-                            trailing: Icon(LucideIcons.clock, color: theme.colorScheme.outline),
+                            title: Text('Start Time: ${startTime.format(context)}', style: theme.textTheme.bodyMedium),
+                            trailing: Icon(LucideIcons.clock, color: theme.colorScheme.primary),
                             onTap: () async {
-                              final picked = await showTimePicker(context: context, initialTime: time);
+                              final picked = await showTimePicker(context: context, initialTime: startTime);
                               if (picked != null) {
-                                setModalState(() => time = picked);
+                                setModalState(() => startTime = picked);
                               }
                             },
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            title: Text('End Time: ${endTime.format(context)}', style: theme.textTheme.bodyMedium),
+                            trailing: Icon(LucideIcons.clock, color: theme.colorScheme.primary),
+                            onTap: () async {
+                              final picked = await showTimePicker(context: context, initialTime: endTime);
+                              if (picked != null) {
+                                setModalState(() => endTime = picked);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Calculated Duration', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          Text(
+                            durationMinutes > 0
+                                ? '${durationMinutes ~/ 60 > 0 ? "${durationMinutes ~/ 60}h " : ""}${durationMinutes % 60}m ($durationMinutes min)'
+                                : '0 min',
+                            style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),
@@ -1177,18 +1206,15 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        onPressed: () {
-                          if (durationMinutes > 0) {
-                            final timestamp = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                            final record = FocusSession(
-                              id: DateTime.now().millisecondsSinceEpoch.toString(),
-                              durationMinutes: durationMinutes,
-                              timestamp: timestamp,
-                              linkedTaskId: selectedTaskId,
-                            );
-                            ref.read(focusSessionRepositoryProvider).addFocusSession(record);
-                            Navigator.pop(context);
-                          }
+                        onPressed: durationMinutes <= 0 ? null : () {
+                          final record = FocusSession(
+                            id: DateTime.now().millisecondsSinceEpoch.toString(),
+                            durationMinutes: durationMinutes,
+                            timestamp: startDateTime,
+                            linkedTaskId: selectedTaskId,
+                          );
+                          ref.read(focusSessionRepositoryProvider).addFocusSession(record);
+                          Navigator.pop(context);
                         },
                         child: const Text('Save Focus Record', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),

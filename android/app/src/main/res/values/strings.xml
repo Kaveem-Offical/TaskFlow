@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="quick_action_widget_description">TaskFlow Quick Pomodoro &amp; Quick Add Task widget dynamic from 1X1 to 1X2 to 2X4 to 2X2</string>
+    <string name="task_deadline_widget_description">TaskFlow 1x2 Task Deadline Countdown widget showing days left for your nearest due task</string>
 </resources>
